@@ -160,22 +160,6 @@ Provides visibility into:
 
 ---
 
-### Authentication
-
-Supports RADIUS authentication directly against ClearPass.
-
-Role assignment is controlled using returned RADIUS attributes.
-
-Example:
-
-| ClearPass User | Aruba-User-Role | Application Role |
-|---------------|----------------|------------------|
-| vis-admin | Admin | Administrator |
-| vis-helpdesk | ReadOnly | Read Only |
-
-
----
-
 ## Architecture
 
 ```text
