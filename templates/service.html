@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>{{ service.name }}</title>
+    <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet">
+
+    <link
+    rel="icon"
+    type="image/x-icon"
+    href="{{ url_for('static', filename='favicon.ico') }}">
+
+<style>
+
+:root{
+    --hpe-green:#01A982;
+    --bg:#0B111B;
+    --card:#151D29;
+    --card2:#1B2432;
+    --border:#2D3748;
+    --text:#E2E8F0;
+}
+
+body{
+    background:var(--bg);
+    color:var(--text);
+}
+
+h2 {
+    color: white;
+    margin-top: 30px;
+    margin-bottom: 15px;
+}
+.card{
+    background:var(--card);
+    border:1px solid var(--border);
+}
+
+.card-header{
+    background:var(--card2);
+    color:white;
+    border-bottom:1px solid var(--border);
+}
+
+.table{
+    color:var(--text) !important;
+}
+
+.table td,
+.table th{
+    border-color:var(--border) !important;
+    color:var(--text) !important;
+    background:var(--card) !important;
+}
+
+.service-title{
+    color:var(--hpe-green);
+    font-weight:700;
+    font-size:2.4rem;
+    margin-bottom:15px;
+}
+
+.status-disabled {
+    color: #F59E0B;
+    font-weight: 700;
+}
+
+.rule{
+    background:#182130;
+    border-left:3px solid var(--hpe-green);
+    padding:8px 12px;
+    border-radius:8px;
+    min-height:45px;
+    margin-bottom:0;
+    color:#E2E8F0;
+}
+
+.rule strong {
+    color: #FFFFFF;
+}
+
+.info-label {
+    color:#94A3B8;
+    font-size:0.65rem;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.8px;
+    margin-bottom:2px;
+}
+
+.info-value {
+    color:#E2E8F0;
+    font-size:0.8rem;
+    font-weight:500;
+    overflow-wrap:anywhere;
+}
+
+.policy-box {
+    background: #182130;
+    border: 1px solid #2D3748;
+    border-radius: 12px;
+    padding: 20px;
+    width: 500px;
+    margin: 0 auto;
+    color: #E2E8F0;
+    text-align: center;
+}
+
+
+.flow-header {
+    color: #01A982;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+
+.arrow{
+    text-align:center;
+    color:var(--hpe-green);
+    font-size:30px;
+    font-weight:bold;
+}
+
+
+.content-wrapper {
+    width: 100%;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-top: 20px;
+}
+/* graph Styling */
+
+.graph-container {
+    height: 650px;
+    width: 100%;
+    background: #101826;
+    border: 1px solid #2D3748;
+    border-radius: 12px;
+}
+
+.graph-legend {
+    margin-top: 15px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.legend-item {
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: #182130;
+    border-left: 4px solid #01A982;
+    font-size: 0.70rem;
+    color: #E2E8F0;
+    font-weight: 500;
+}
+
+.legend-service {
+    border-left-color: #01A982;
+}
+
+.legend-auth {
+    border-left-color: #0D6EFD;
+}
+
+.legend-authz {
+    border-left-color: #7C3AED;
+}
+
+.legend-role {
+    border-left-color: #06B6D4;
+}
+
+.legend-role-condition {
+    border-left-color: #074c5e;
+}
+
+.legend-mapped-role {
+    border-left-color: #22C55E;
+}
+
+.legend-enforcement {
+    border-left-color: #F97316;
+}
+
+.legend-profile {
+    border-left-color: #FACC15;
+}
+.legend-condition {
+    border-left-color: #BE123C;
+}
+
+.legend-attribute {
+    border-left-color: #CBD5E1;
+}
+.node-info-panel {
+
+    background: #182130;
+    border: 1px solid #2D3748;
+    border-radius: 12px;
+    padding: 20px;
+    min-height: 650px;
+    color: #E2E8F0;
+    overflow-y: auto;
+}
+
+.node-info-label {
+
+    color: #01A982;
+
+    font-weight: 700;
+}
+
+.node-info-value {
+
+    margin-bottom: 2px;
+}
+
+.export-menu .dropdown-item {
+    font-size: 0.8rem;
+    color: #E2E8F0;
+}
+
+.export-menu .dropdown-item:hover {
+    background: #182130;
+    color: #01A982;
+}
+
+.export-menu .disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+
+</style>
+</head>
+
+<body>
+
+
+<div class="content-wrapper">
+
+<div style="margin-bottom:20px;">
+    <a href="/"
+       class="btn btn-success">
+       ← Back to Services
+    </a>
+</div>
+
+<h1
+    id="serviceName"
+    class="service-title">
+    {{ service.name }}
+</h1>
+
+
+<div class="card mb-4">
+
+    <div class="card-header">
+        Service Information
+    </div>
+
+    <div class="card-body">
+
+        <div class="row g-3">
+
+            <div class="col-md-3">
+                <div class="rule">
+
+                    <div class="info-label">
+                        Type
+                    </div>
+
+                    <div class="info-value">
+                        {{ service.type }}
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="rule">
+
+                    
+                    <div class="info-label">
+                        Template
+                    </div>
+
+                    <div class="info-value">
+                        {{ service.template }}
+                    </div>
+
+                    
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="rule">
+                    
+                    <div class="info-label">
+                        Status
+                    </div>
+
+                    <div class="info-value">
+
+                        {% if service.enabled %}
+                            <span class="status-ok">
+                                ● Enabled
+                            </span>
+                        {% else %}
+                            <span class="status-disabled">
+                                ● Disabled
+                            </span>
+                        {% endif %}
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="rule">
+
+                    <div class="info-label">
+                        Hit Count
+                    </div>
+
+                    <div class="info-value">
+                        {{ service.hit_count}}
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+        
+        <div class="row g-2 mt-1">
+            <div class="col-md-3">
+                <div class="rule">
+                    <div class="info-label">
+                        Authentication Methods
+                    </div>
+
+                    <div class="info-value">
+
+                        {% if service.auth_methods %}
+                            {{ service.auth_methods | join(", ") }}
+                        {% else %}
+                            —
+                        {% endif %}
+
+                    </div>
+
+
+
+                </div>
+            </div>
+
+
+            <div class="col-md-3">
+                <div class="rule">
+                    <div class="info-label">
+                        Authentication Sources
+                    </div>
+
+                    <div class="info-value">
+
+                        {% if service.auth_sources %}
+                            {{ service.auth_sources | join(", ") }}
+                        {% else %}
+                            —
+                        {% endif %}
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="col-md-3">
+
+                <div class="rule">
+
+                    <div class="info-label">
+                        Authorization Sources
+                    </div>
+
+                    <div class="info-value">
+
+                        {% if service.authz_sources %}
+                            {{ service.authz_sources | join(", ") }}
+                        {% else %}
+                            —
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-3">
+                <div class="rule">
+                    <div class="info-label">
+                        Role Mapping Policy
+                    </div>
+
+                    <div class="info-value">
+
+                        {% if service.role_mapping_policy %}
+                            {{ service.role_mapping_policy }}
+                        {% else %}
+                            —
+                        {% endif %}
+
+                    </div>
+
+                </div>
+            </div>
+            
+        </div>
+
+        <div class="row g-2 mt-2">
+
+            <div class="col-md-3">
+                <div class="rule">
+
+                    <div class="info-label">
+                        Enforcement Policy
+                    </div>
+
+                    <div class="info-value">
+                        {{ service.enf_policy }}
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="rule">
+
+                    <div class="info-label">
+                        Posture Policies
+                    </div>
+
+                    <div class="info-value">
+
+                        {% if service.posture_policies %}
+                            {{ service.posture_policies | join(", ") }}
+                        {% else %}
+                            —
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="rule">
+                    <div class="info-label">
+                        Audit Servers
+                    </div>
+                    <div class="info-value">
+
+                        {% if service.audit_enabled %}
+                            {{ service.audit_server }}
+                        {% else %}
+                            —
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="rule">
+                    <div class="info-label">
+                        Accounting Proxy Targets
+                    </div>
+
+                    <div class="info-value">
+
+                        {% if service.acct_proxy_enabled %}
+                            {{ service.acct_proxy_targets | join(", ") }}
+                        {% else %}
+                            —
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        </div>
+        
+
+    </div>
+
+</div>
+
+
+<div class="card mb-4">
+
+    <div class="card-header">
+        Visual Policy Graph
+    </div>
+
+    <div class="card-body">
+        <div class="mb-3">
+
+            <button
+                id="resetLayoutBtn"
+                class="btn btn-success btn-sm">
+
+                Reset Layout
+
+            </button>
+
+            <button
+                id="fitGraphBtn"
+                class="btn btn-outline-light btn-sm ms-2">
+
+                Fit Graph
+
+            </button>
+
+            <button
+                id="centerGraphBtn"
+                class="btn btn-outline-light btn-sm ms-2">
+
+                Centre Graph
+
+            </button>
+        
+        <div class="dropdown d-inline-block ms-2">
+
+            <button
+                class="btn btn-outline-light btn-sm dropdown-toggle"
+                type="button"
+                id="exportMenuButton"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
+
+                Export
+
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-dark export-menu">
+                <li>
+                    <a class="dropdown-item" href="#" id="exportPngBtn" data-export="png">PNG</a>
+                </li>
+
+                <li>
+                    <a class="dropdown-item" href="#" id="exportJpgBtn" data-export="jpg">JPG</a>
+                </li>
+
+                <li>
+                    <a class="dropdown-item disabled" href="#" id="exportPdfBtn" data-export="pdf" aria-disabled="true">PDF coming soon</a>
+                </li>
+
+            </ul>
+
+        </div>
+
+            <input
+                type="text"
+                id="graphSearch"
+                placeholder="Search nodes..."
+                style="
+                    width:220px;
+                    height:31px;
+                    margin-left:10px;
+                    padding:4px 8px;
+                    background:#182130;
+                    color:#E2E8F0;
+                    border:1px solid #2D3748;
+                    border-radius:4px;
+                    vertical-align:middle;
+                "
+            >
+            <button
+                id="clearSearchBtn"
+                class="btn btn-outline-light btn-sm ms-2">
+                Clear
+            </button>
+
+            <button
+                id="prevSearchBtn"
+                class="btn btn-outline-light btn-sm ms-2"
+                style="
+                    min-width: 36px;
+                    font-size: 1rem;
+                    font-weight: bold;
+                ">
+                ❮
+            </button>
+
+            <span
+                id="searchResultCount"
+                style="
+                    margin-left:8px;
+                    color:#01A982;
+                    font-size:0.85rem;
+                    font-weight:600;
+                    margin-right:8px;
+                ">
+            </span>
+
+            <button
+                id="nextSearchBtn"
+                class="btn btn-outline-light btn-sm"
+                style="
+                    min-width: 36px;
+                    font-size: 1rem;
+                    font-weight: bold;
+                ">
+                ❯
+            </button>
+            
+        </div>
+            <div class="row">
+                <div class="col-lg-9">
+                    <div id="policyGraph"
+                        class="graph-container">
+                    </div>
+                </div>
+                <div class="col-lg-3">
+
+                    <div class="node-info-panel">
+                        <h5>
+                            Selected Object
+                        </h5>
+                        <hr>
+                        <div id="nodeInfoContent">
+                            Click a node to view details.
+                        </div>
+                        <hr>
+                        <h6>Legend</h6>
+                                <div class="graph-legend">
+
+                                    <div class="legend-item legend-service">
+                                        Service
+                                    </div>
+
+                                    <div class="legend-item legend-auth">
+                                        Authentication
+                                    </div>
+
+                                    <div class="legend-item legend-authz">
+                                        Authorisation
+                                    </div>
+
+                                    <div class="legend-item legend-role">
+                                        Role Mapping
+                                    </div>
+
+                                    <div class="legend-item legend-role-condition">
+                                        Role Rule
+                                    </div>
+
+                                    <div class="legend-item legend-mapped-role">
+                                        Mapped Role
+                                    </div>
+
+                                    <div class="legend-item legend-enforcement">
+                                        Enforcement Policy
+                                    </div>
+
+                                    <div class="legend-item legend-profile">
+                                        Enforcement Profiles
+                                    </div>
+                                    <div class="legend-item legend-condition">
+                                        Rule Condition
+                                    </div>
+
+                                    <div class="legend-item legend-attribute">
+                                        Attribute
+                                    </div>
+
+                                </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+    </div>
+
+</div>
+
+</div>
+
+<script type="application/json" id="graph-data">
+{{ graph | tojson }}
+</script>
+
+<script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+<script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+
+<script src="{{ url_for('static', filename='service_graph.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+</body>
+</html>

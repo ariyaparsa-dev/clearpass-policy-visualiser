@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClearPass Policy Visualiser</title>
+    <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet">
+
+    <link
+    rel="icon"
+    type="image/x-icon"
+    href="{{ url_for('static', filename='favicon.ico') }}">
+
+
+    <style>
+
+        :root {
+            --hpe-green: #01A982;
+            --dark-bg: #0B111B;
+            --dark-card: #151D29;
+            --dark-card-2: #1B2432;
+            --border: #2D3748;
+            --text: #E2E8F0;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background-color: #111827;
+            border-bottom: 3px solid var(--hpe-green);
+        }
+
+        .brand-green {
+            color: var(--hpe-green);
+            font-weight: 700;
+        }
+
+        .main-card {
+            background: var(--dark-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        .card-header-custom {
+            background: var(--dark-card-2);
+            border-bottom: 1px solid var(--border);
+            border-radius: 12px 12px 0 0;
+            padding: 10px 16px;
+        }
+
+        .stat-card {
+            background: var(--dark-card);
+            border-left: 5px solid var(--hpe-green);
+            border-radius: 10px;
+            padding: 10px;
+            height: 100%;
+        }
+
+        .stat-number {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--hpe-green);
+        }
+
+        .health-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+        }
+
+        .health-item {
+            display: flex;
+            align-items: center;
+
+            background: #182130;
+            border-left: 4px solid #01A982;
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        .health-item strong {
+            font-size: 0.8rem;
+        }
+
+        .health-item span {
+            font-size: 0.9rem;
+            margin-left: 10px;
+        }
+
+        .health-card-body {
+            background: var(--dark-card);
+            color: var(--text);
+            padding: 12px;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .health-card-body div {
+            margin-bottom: 6px;
+        }
+
+        .card-header-custom h5 {
+            margin: 0;
+            color: white;
+        }
+        .status-ok {
+            color: #01A982;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+
+        .ms-2 {
+            font-size: 0.8rem;
+        }
+
+        .service-status {
+            font-size: 0.75rem;
+            margin-left: 8px;
+        }
+
+        .status-fail {
+            color: #DC3545;
+            font-weight: 700;
+        }
+
+        .table-dark-custom {
+            background: transparent !important;
+            color: #E2E8F0 !important;
+        }
+
+        .table-dark-custom thead tr {
+            background: #1B2432 !important;
+        }
+
+        .table-dark-custom tbody tr {
+            background: #151D29 !important;
+        }
+
+        .table-dark-custom tbody tr:hover {
+            background: #233046 !important;
+        }
+
+        .table-dark-custom th {
+            color: #FFFFFF !important;
+            border-color: #2D3748 !important;
+            background: #1B2432 !important;
+        }
+
+        .table-dark-custom td {
+            color: #E2E8F0 !important;
+            border-color: #2D3748 !important;
+            background: #151D29 !important;
+        }
+
+        .table-dark-custom tbody tr:hover {
+            background-color: rgba(1,169,130,.12);
+        }
+
+        .service-system {
+            color: #6CB6FF;
+            font-weight: 500;
+        }
+
+        .service-category {
+            color: #9CA3AF;
+            font-style: italic;
+            font-weight: 600;
+        }
+
+        .badge-system {
+            background-color: #0D6EFD;
+            color: white;
+        }
+
+        .badge-category {
+            background-color: #6C757D;
+            color: white;
+        }
+
+        .service-link {
+            text-decoration: none;
+            color: #8FEFCF;
+            font-weight: 500;
+        }
+
+        .service-link:hover {
+            color: white;
+        }
+
+        .form-control {
+            background: #111827;
+            border: 1px solid var(--border);
+            color: white;
+        }
+
+        .form-control:focus {
+            background: #111827;
+            color: white;
+            border-color: var(--hpe-green);
+            box-shadow: 0 0 0 .25rem rgba(1,169,130,.25);
+        }
+
+        .badge-radius {
+            background-color: #0D6EFD;
+        }
+
+        .badge-tacacs {
+            background-color: #DC3545;
+        }
+
+        .badge-webauth {
+            background-color: #FFC107;
+            color: black;
+        }
+
+        .badge-app {
+            background-color: #6C757D;
+        }
+
+        .btn-outline-success {
+            border-color: #01A982;
+            color: #01A982;
+        }
+
+        .btn-outline-success:hover {
+            background-color: #01A982;
+            color: #001B14;
+        }
+                
+	table {
+    	    color: #E2E8F0 !important;
+   	}
+
+	thead {
+    	background: #1B2432;
+	}
+
+	tbody tr {
+    	background: #151D29;
+	}
+
+	tbody tr:hover {
+    	background: #233046 !important;
+	}
+
+
+
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+
+        <span class="navbar-brand">
+            <span class="brand-green">ClearPass</span>
+            Policy Visualizer
+
+            <span
+                style="
+                    font-size:0.70rem;
+                    color:#9CA3AF;
+                    margin-left:8px;
+                    vertical-align:middle;
+                    font-weight:500;
+                ">
+                v{{ version }}
+            </span>
+        </span>
+        
+
+        <div class="ms-auto text-end">
+
+            {% if current_user.is_authenticated %}
+
+            <div
+                style="
+                    font-size:0.85rem;
+                    color:#E2E8F0;
+                    margin-bottom:6px;
+                "
+            >
+                Logged in as
+                <strong>{{ current_user.username }}</strong>
+
+                <span
+                    style="
+                        margin-left:6px;
+                        color:#01A982;
+                        font-weight:600;
+                    "
+                >
+                    ({{ current_user.role }})
+                </span>
+
+                <a
+                    href="{{ url_for('auth.logout') }}"
+                    style="
+                        margin-left:12px;
+                        color:#F87171;
+                        text-decoration:none;
+                        font-weight:600;
+                    "
+                >
+                    Logout
+                </a>
+
+            </div>
+
+            {% endif %}
+
+            <div
+                style="
+                    font-size:0.75rem;
+                    color:#9CA3AF;
+                    margin-bottom:4px;
+                "
+            >
+                Last Refresh:
+                {{ last_refresh }}
+            </div>
+
+            <a
+                href="/refresh-cache"
+                class="btn btn-success"
+                title="Reload services, policies, profiles and references from ClearPass"
+                onclick="return confirm('Refresh ClearPass data and caches?')"
+            >
+                Refresh Services
+            </a>
+
+        </div>
+
+    </div>
+</nav>
+
+<div class="container-fluid mt-4">
+
+    <div class="row mb-4">
+        <div class="col">
+            <div class="stat-card">
+                <div>
+                    <strong>Total Services</strong>
+                </div>
+
+                <div class="stat-number">
+                    {{ stats.total_services }}
+                </div>
+
+                <div style="font-size:0.8rem;">
+                    <span class="status-ok">
+                        {{ stats.enabled_services }}
+                    </span>
+                    Enabled
+                </div>
+
+            </div>
+        </div>
+
+
+
+
+        <div class="col">
+            <div class="stat-card">
+                <div><strong>TACACS Services</strong></div>
+                <div class="stat-number">
+                    {{ stats.tacacs_services }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="stat-card">
+                <div>
+                    <strong>MAC Authentication</strong>
+                </div>
+
+                <div class="stat-number">
+                    {{ stats.mac_authentication }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="stat-card">
+                <div><strong>802.1X Wired</strong></div>
+                <div class="stat-number">
+                    {{ stats.wired_8021x }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="stat-card">
+                <div><strong>802.1X Wireless</strong></div>
+                <div class="stat-number">
+                    {{ stats.wireless_8021x }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="stat-card">
+                <div><strong>Application Services</strong></div>
+                <div class="stat-number">
+                    {{ stats.application_services }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="stat-card">
+                <div><strong>WebAuth Services</strong></div>
+                <div class="stat-number">
+                    {{ stats.webauth_services }}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+</div>
+
+
+
+<div class="main-card mb-4">
+
+    <div class="card-header-custom">
+        <h5 class="mb-0">ClearPass Connectivity</h5>
+    </div>
+
+    <div class="health-card-body">
+
+        {% if health.connected %}
+
+            <div class="status-ok mb-2">
+                ● Connected
+            </div>
+
+<div class="health-grid">
+
+    <div class="health-item">
+        <strong>Server</strong>
+        <span class="status-ok">
+        {{ health.server }}
+        </span>
+    </div>
+
+    <div class="health-item">
+        <strong>API Authentication</strong>
+
+        {% if health.authentication %}
+            <span class="status-ok">OK</span>
+        {% else %}
+            <span class="status-fail">FAILED</span>
+        {% endif %}
+
+    </div>
+
+    <div class="health-item">
+
+        <strong>Reachability</strong>
+
+        {% if health.reachable %}
+
+            <span class="status-ok">
+                OK
+            </span>
+
+        {% else %}
+
+            <span class="status-fail">
+                FAILED
+            </span>
+
+        {% endif %}
+
+    </div>    
+
+    <div class="health-item">
+        <strong>Service API</strong>
+
+        {% if health.service_api %}
+            <span class="status-ok">OK</span>
+        {% else %}
+            <span class="status-fail">FAILED</span>
+        {% endif %}
+
+    </div>
+
+    <div class="health-item">
+        <strong>Response Time</strong>
+
+        {% if health.response_status == "good" %}
+
+            <span class="status-ok">
+                {{ health.response_ms }} ms
+            </span>
+
+        {% elif health.response_status == "warning" %}
+
+            <span style="color:#FFC107;font-weight:700;">
+                {{ health.response_ms }} ms
+            </span>
+
+        {% else %}
+
+            <span class="status-fail">
+                {{ health.response_ms }} ms
+            </span>
+
+        {% endif %}
+
+    </div>
+
+
+</div>
+
+
+
+
+        {% else %}
+
+            <div class="text-danger mb-2">
+                ❌ Connection Failed
+            </div>
+
+            <div>{{ health.error }}</div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+
+
+<div class="main-card">
+    <div class="card-header-custom">
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="mb-0">Configured Services</h5>
+            </div>
+            <div class="col-md-6">
+                <input
+                    id="serviceSearch"
+                    class="form-control"
+                    placeholder="Search services..." autofocus>
+            </div>
+        </div>
+    </div>
+    <div class="p-3">
+        <table class="table table-dark-custom table-hover">
+            <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="serviceTable">
+
+            {% for s in services %}
+
+                <tr>
+
+                    <td>{{ s.order_no }}</td>                  
+                    <!--<td>{{ s.name }}</td> -->
+
+                    <td>
+                        {% if s.name.startswith('[') %}
+                            <span class="badge badge-system">
+                                SYSTEM
+                            </span>
+                            <span class="service-system">
+                                {{ s.name }}
+                            </span>
+                        {% elif s.name.startswith('-----') %}
+                            <span class="badge badge-category">
+                                CATEGORY
+                            </span>
+                            <span class="service-category">
+                                {{ s.name }}
+                            </span>
+                        
+                        {% else %}
+
+                            {{ s.name }}
+
+                            {% if s.enabled %}
+
+                                <span class="status-ok ms-2 service-status">
+                                    ● Enabled
+                                </span>
+
+                            {% else %}
+
+                                <span style="color:#F59E0B;" class="ms-2 service-status">
+                                    ● Disabled
+                                </span>
+
+                            {% endif %}
+
+                        {% endif %}
+
+                    </td>
+                    
+                    <td>{{ s.type }}</td>
+
+
+                    <td>
+                        {% if s.name.startswith('-----') %}
+                            <span class="badge bg-secondary">
+                                N/A
+                            </span>
+                        {% else %}
+                            <a href="/service/{{ s.id }}"
+                            class="btn btn-success btn-sm">
+                                Visualise
+                            </a>
+                        {% endif %}
+
+                    </td>
+
+                </tr>
+
+            {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+</div>
+
+<script>
+
+document.getElementById("serviceSearch")
+    .addEventListener("keyup", function() {
+
+    let filter = this.value.toLowerCase();
+
+    let rows =
+        document.querySelectorAll("#serviceTable tr");
+
+    rows.forEach(row => {
+
+        let text =
+            row.textContent.toLowerCase();
+
+        row.style.display =
+            text.includes(filter)
+            ? ""
+            : "none";
+
+    });
+
+});
+
+</script>
+
+</body>
+</html>

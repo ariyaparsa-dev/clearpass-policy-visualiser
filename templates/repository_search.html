@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Repository Search</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 24px;
+            background: #0F172A;
+            color: #E2E8F0;
+            font-family: Arial, sans-serif;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #7FFFD4;
+            font-size: 1.5rem;
+        }
+
+        .summary {
+            background: #111827;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+
+        .summary-row {
+            margin-bottom: 6px;
+        }
+
+        .label {
+            color: #94A3B8;
+            font-weight: 700;
+            display: inline-block;
+            min-width: 130px;
+        }
+
+        .value {
+            color: #E2E8F0;
+        }
+
+        .count {
+            color: #FACC15;
+            font-weight: 700;
+        }
+
+        .search-box {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #020617;
+            color: #E2E8F0;
+            font-size: 0.95rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #111827;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th {
+            text-align: left;
+            background: #1E293B;
+            color: #7FFFD4;
+            padding: 10px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #334155;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 9px 10px;
+            border-bottom: 1px solid #334155;
+            font-size: 0.85rem;
+            vertical-align: top;
+        }
+
+        tr:hover {
+            background: #1E293B;
+        }
+
+        .unsupported {
+            color: #FCA5A5;
+            background: #450A0A;
+            border: 1px solid #991B1B;
+            padding: 14px;
+            border-radius: 8px;
+        }
+
+        .empty {
+            color: #FACC15;
+            background: #422006;
+            border: 1px solid #A16207;
+            padding: 14px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Repository Search</h1>
+
+    <div class="summary">
+        <div class="summary-row">
+            <span class="label">Source</span>
+            <span class="value">{{ result.source_type }}</span>
+        </div>
+
+        <div class="summary-row">
+            <span class="label">Condition</span>
+            <span class="value">
+                {{ result.attribute_name }}
+                {{ result.operator }}
+                {{ result.expected_value }}
+            </span>
+        </div>
+
+        <div class="summary-row">
+            <span class="label">Result</span>
+            <span class="count">
+                {{ result["items"] | length }}
+                {{ result.match_label or "matches" }}
+            </span>
+        </div>
+    </div>
+
+    {% if not result.supported %}
+
+        <div class="unsupported">
+            This condition source is not currently supported for repository exploration.
+        </div>
+
+    {% elif result["items"] | length == 0 %}
+
+        <div class="empty">
+            No matching records found.
+        </div>
+
+    {% else %}
+
+        <input
+            id="repositorySearch"
+            class="search-box"
+            type="text"
+            placeholder="Search results..."
+            oninput="filterTable()"
+        >
+
+        {% if result.repository_type == "endpoint" %}
+
+            <table id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>MAC Address</th>
+                        <th>Status</th>
+                        <th>Hostname</th>
+                        <th>Device Name</th>
+                        <th>OS Family</th>
+                        <th>Device Category</th>
+                        <th>Insight Tags</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for item in result["items"] %}
+                    <tr>
+                        <td>
+                            <a
+                                href="/endpoint/{{ item.id }}?source_type={{ result.source_type | urlencode }}&attribute_name={{ result.attribute_name | urlencode }}&operator={{ result.operator | urlencode }}&value={{ result.expected_value | urlencode }}&match_count={{ result["items"] | length }}"
+
+                                target="_blank"
+                                style="color:#7FFFD4; text-decoration:underline;">
+                                {{ item.mac_address }}
+                            </a>
+
+                        </td>
+
+                        <td>{{ item.status }}</td>
+                        <td>{{ item.hostname or "" }}</td>
+                        <td>{{ item.device_name or "" }}</td>
+                        <td>{{ item.os_family or "" }}</td>
+                        <td>{{ item.device_category or "" }}</td>
+                        <td>{{ item.device_insight_tags or "" }}</td>
+                        <td>{{ item.description or "" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% elif result.repository_type == "guest" %}
+
+            <table id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Role ID</th>
+                        <th>Role Name</th>
+                        <th>Email</th>
+                        <th>Enabled</th>
+                        <th>State</th>
+                        <th>Sponsor</th>
+                        <th>Visitor Name</th>
+                        <th>Company</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for item in result["items"] %}
+                    <tr>
+                        <td>{{ item.username }}</td>
+                        <td>{{ item.role_id }}</td>
+                        <td>{{ item.role_name }}</td>
+                        <td>{{ item.email }}</td>
+                        <td>{{ item.enabled }}</td>
+                        <td>{{ item.current_state }}</td>
+                        <td>{{ item.sponsor_name }}</td>
+                        <td>{{ item.visitor_name }}</td>
+                        <td>{{ item.visitor_company }}</td>
+                        <td>{{ item.source }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% endif %}
+
+    {% endif %}
+
+    <script>
+        function filterTable() {
+            const input =
+                document.getElementById("repositorySearch");
+
+            const filter =
+                input.value.toLowerCase();
+
+            const table =
+                document.getElementById("resultsTable");
+
+            if (!table) {
+                return;
+            }
+
+            const rows =
+                table.getElementsByTagName("tr");
+
+            for (let i = 1; i < rows.length; i++) {
+                const rowText =
+                    rows[i].textContent.toLowerCase();
+
+                rows[i].style.display =
+                    rowText.includes(filter)
+                        ? ""
+                        : "none";
+            }
+        }
+    </script>
+
+</body>
+</html>

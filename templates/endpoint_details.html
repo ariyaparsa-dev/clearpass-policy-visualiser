@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>Endpoint Details</title>
+
+    <style>
+
+        body {
+            margin: 0;
+            padding: 24px;
+            background: #0F172A;
+            color: #E2E8F0;
+            font-family: Arial, sans-serif;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #7FFFD4;
+        }
+
+        .card {
+            background: #111827;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            color: #7FFFD4;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 18px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns:
+                180px 1fr
+                180px 1fr;
+            column-gap: 30px;
+            row-gap: 14px;
+            align-items: start;
+        }
+
+        .label {
+            color: #94A3B8;
+            font-weight: 700;
+        }
+
+        .value {
+            color: #E2E8F0;
+            word-break: break-word;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            color: #7FFFD4;
+            padding: 4px 8px;
+            margin: 4px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        details {
+            margin-top: 20px;
+        }
+
+        summary {
+            cursor: pointer;
+            color: #7FFFD4;
+            font-weight: 600;
+        }
+
+        pre {
+            background: #020617;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            margin-top: 12px;
+            font-size: 0.85rem;
+        }
+
+        .mono {
+            font-family: Consolas, Monaco, monospace;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <h1>Endpoint Details</h1>
+
+    {% if endpoint.attribute_name %}
+
+    <div class="card">
+
+        <div class="section-title">
+            Opened From
+        </div>
+
+        <div class="info-grid">
+
+            <div class="label">
+                Matching Endpoints
+            </div>
+
+            <div class="value">
+                {{ endpoint.match_count }}
+            </div>
+
+            <div class="label">
+                Condition
+            </div>
+
+            <div class="value">
+                {{ endpoint.source_type }}:
+                {{ endpoint.attribute_name }}
+                {{ endpoint.operator }}
+                {{ endpoint.condition_value }}
+            </div>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+    <div class="card">
+
+        <div class="section-title">
+            Endpoint Information
+        </div>
+
+        <div class="info-grid">
+
+            <div class="label">MAC Address</div>
+            <div class="value mono">
+                {{ endpoint.formatted_mac }}
+            </div>
+
+            <div class="label">Endpoint ID</div>
+            <div class="value">
+                {{ endpoint.id }}
+            </div>
+
+            <div class="label">Status</div>
+            <div class="value">
+                {{ endpoint.status }}
+            </div>
+
+            <div class="label">Randomised MAC</div>
+            <div class="value">
+                {{ endpoint.randomized_mac }}
+            </div>
+
+            <div class="label">Hostname</div>
+            <div class="value">
+                {{ endpoint.hostname or "-" }}
+            </div>
+
+            <div class="label">Device Name</div>
+            <div class="value">
+                {{ endpoint.device_name or "-" }}
+            </div>
+
+            <div class="label">OS Family</div>
+            <div class="value">
+                {{ endpoint.os_family or "-" }}
+            </div>
+
+            <div class="label">Device Category</div>
+            <div class="value">
+                {{ endpoint.device_category or "-" }}
+            </div>
+
+            <div class="label">Device Type</div>
+            <div class="value">
+                {{ endpoint.device_type or "-" }}
+            </div>
+
+            <div class="label">Expanded Device Type</div>
+            <div class="value">
+                {{ endpoint.expanded_device_type or "-" }}
+            </div>
+
+            <div class="label">MAC Vendor</div>
+            <div class="value">
+                {{ endpoint.mac_vendor or "-" }}
+            </div>
+
+            <div class="label">IPv4 Address</div>
+            <div class="value">
+                {{ endpoint.ip_address or "-" }}
+            </div>
+
+
+            <div class="label">Added</div>
+            <div class="value">
+                {{ endpoint.added_at }}
+            </div>
+
+            <div class="label">Last Updated</div>
+            <div class="value">
+                {{ endpoint.updated_at }}
+            </div>
+
+        </div>
+
+    </div>
+
+    {% if endpoint.device_insight_tags %}
+
+    <div class="card">
+
+        <div class="section-title">
+            Device Insight Tags
+        </div>
+
+        {% for tag in endpoint.device_insight_tags %}
+
+            <span class="tag">
+                {{ tag }}
+            </span>
+
+        {% endfor %}
+
+    </div>
+
+    {% endif %}
+
+    {% if endpoint.attributes %}
+
+    <div class="card">
+
+        <div class="section-title">
+            Endpoint Attributes
+        </div>
+
+        <div class="info-grid">
+
+            {% for key, value in endpoint.attributes.items() %}
+
+                <div class="label">
+                    {{ key }}
+                </div>
+
+                <div class="value">
+                    {{ value }}
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+    <details>
+
+        <summary>
+            Raw Endpoint JSON
+        </summary>
+
+        <pre>{{ endpoint | tojson(indent=4) }}</pre>
+
+    </details>
+
+</body>
+
+</html>
