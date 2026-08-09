@@ -6,26 +6,31 @@ Visualise, analyse and troubleshoot Aruba ClearPass Services, Role Mapping Polic
   <img src="https://img.shields.io/badge/Python-3.11+-blue" alt="Python">
   <img src="https://img.shields.io/badge/Flask-Web_App-green" alt="Flask">
   <img src="https://img.shields.io/badge/Aruba-ClearPass-orange" alt="ClearPass">
-  <img src="https:img.shields.io/badge/License-MIT-yellow" alt="License">
+  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
 ---
 
 ## Overview
 
-ClearPass Policy Visualiser is a web-based application that provides graphical visualisation and dependency analysis for Aruba ClearPass policies.
+- A Flask-based visualisation and analysis platform for Aruba ClearPass that maps Services, Role Mapping Policies, Enforcement Policies, Enforcement Profiles and Enforcement Attributes.
 
-Rather than navigating through multiple ClearPass configuration screens, the application presents authentication, authorisation, role mapping and enforcement relationships in a single interactive graph.
 
-The application helps administrators:
+- Provides a graphical view of policy relationships across the complete authentication and authorisation workflow.
 
-- Understand service dependencies
-- Troubleshoot authentication issues
-- Perform impact analysis before making changes
-- Discover Enforcement Profile usage
-- Analyse Role Mapping Policies
-- Explore endpoint repository data
-- Visualise complete policy flows
+- Consolidates service dependencies, policy logic and enforcement actions into a single interactive interface.
+
+- Enables administrators to trace dependencies between ClearPass objects without navigating multiple areas of ClearPass Policy Manager.
+
+- Supports impact analysis by identifying services, policies, enforcement profiles and roles affected by proposed configuration changes.
+
+- Includes endpoint repository analysis with matching object counts, endpoint drill-down and profiling visibility.
+
+- Uses ClearPass REST APIs secured with OAuth 2.0 Client Credentials Grant for service, policy and enforcement data retrieval.
+
+- Supports role-based access using RADIUS authentication against ClearPass and Aruba-User-Role based authorisation.
+
+- Optionally accelerates endpoint profiling lookups using the built-in ClearPass PostgreSQL `appexternal` account and the `tips_endpoint_profiles` table, reducing endpoint fingerprint cache loading from approximately 74 seconds to 0.08 seconds in the reference environment.
 
 <p align="center">
   <img src="screenshots/screenshot-8.jpg" alt="Service Dependency" width="800">
