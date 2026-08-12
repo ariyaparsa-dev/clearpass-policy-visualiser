@@ -76,6 +76,16 @@
             background: #1B2432;
         }
 
+        .object-item a {
+            color: #8FEFCF;
+            text-decoration: none;
+        }
+
+        .object-item a:hover {
+            color: white;
+            text-decoration: underline;
+        }
+
         .summary-card {
             background: var(--dark-card);
             border-left: 5px solid var(--hpe-green);
@@ -180,6 +190,23 @@
 
         <div class="col-xl-3 col-lg-6 mb-3">
             <div class="summary-card">
+                <div>Enforcement Policies</div>
+                <div class="summary-number">
+                    {{ unused.policies.unused_count }}
+                </div>
+                {% if unused.policies.unused %}
+                <button
+                    class="copy-all-btn"
+                    onclick="copyList('policies-list')"
+                >
+                    Copy All
+                </button>
+                {% endif %}
+            </div>
+        </div>        
+
+        <div class="col-xl-3 col-lg-6 mb-3">
+            <div class="summary-card">
                 <div>Enforcement Profiles</div>
                 <div class="summary-number">
                     {{ unused.profiles.unused_count }}
@@ -195,22 +222,7 @@
             </div>
         </div>
 
-        <div class="col-xl-3 col-lg-6 mb-3">
-            <div class="summary-card">
-                <div>Enforcement Policies</div>
-                <div class="summary-number">
-                    {{ unused.policies.unused_count }}
-                </div>
-                {% if unused.policies.unused %}
-                <button
-                    class="copy-all-btn"
-                    onclick="copyList('policies-list')"
-                >
-                    Copy All
-                </button>
-                {% endif %}
-            </div>
-        </div>
+
 
         <div class="col-xl-3 col-lg-6 mb-3">
             <div class="summary-card">
@@ -250,26 +262,6 @@
 
     <div class="row">
 
-        <!-- Profiles -->
-
-        <div class="col-xl-3 col-lg-6 mb-4">
-
-            <div class="main-card">
-
-                <div class="object-list" id="profiles-list">
-
-                    {% for item in unused.profiles.unused %}
-                    <div class="object-item">
-                        {{ item }}
-                    </div>
-                    {% endfor %}
-
-                </div>
-
-            </div>
-
-        </div>
-
         <!-- Policies -->
 
         <div class="col-xl-3 col-lg-6 mb-4">
@@ -280,7 +272,31 @@
 
                     {% for item in unused.policies.unused %}
                     <div class="object-item">
-                        {{ item }}
+                        <a href="{{ url_for('object_policy', name=item) }}">
+                            {{ item }}
+                        </a>
+                    </div>
+                    {% endfor %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Profiles -->
+
+        <div class="col-xl-3 col-lg-6 mb-4">
+
+            <div class="main-card">
+
+                <div class="object-list" id="profiles-list">
+
+                    {% for item in unused.profiles.unused %}
+                    <div class="object-item">
+                        <a href="{{ url_for('object_profile', name=item) }}">
+                            {{ item }}
+                        </a>
                     </div>
                     {% endfor %}
 
@@ -300,7 +316,9 @@
 
                     {% for item in unused.role_maps.unused %}
                     <div class="object-item">
-                        {{ item }}
+                        <a href="{{ url_for('object_rolemap', name=item) }}">
+                            {{ item }}
+                        </a>
                     </div>
                     {% endfor %}
 

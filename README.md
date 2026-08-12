@@ -26,6 +26,8 @@ Visualise, analyse and troubleshoot Aruba ClearPass Services, Role Mapping Polic
 
 - Identifies unused Enforcement Profiles, Enforcement Policies, Role Mapping Policies and Roles through full dependency analysis, helping administrators find cleanup candidates.
 
+- Provides drill-down visibility for unused Enforcement Profiles, including profile metadata and configured Enforcement Attributes.
+
 - Includes endpoint repository analysis with matching object counts, endpoint drill-down and profiling visibility.
 
 - Uses ClearPass REST APIs secured with OAuth 2.0 Client Credentials Grant for service, policy and enforcement data retrieval.
@@ -93,7 +95,7 @@ Visualise, analyse and troubleshoot Aruba ClearPass Services, Role Mapping Polic
 ### Unused Objects
 
 <p align="center">
-  <img src="screenshots/screenshot-10.jpg" alt="Endpoint Details" width="800">
+  <img src="screenshots/screenshot-10.jpg" alt="Unused Objects" width="800">
 </p>
 
 ---
@@ -156,11 +158,18 @@ Displays:
 
 ### Enforcement Profile Analysis
 
+Provides detailed visibility into Enforcement Profile configuration and dependencies.
+
 Shows:
 
 - Services using an Enforcement Profile
 - Enforcement Policy relationships
 - Enforcement Profile dependencies
+- Profile ID
+- Profile type
+- Enforcement action
+- Profile description, when configured
+- Enforcement Attributes including type, attribute and value
 
 ---
 
@@ -182,18 +191,33 @@ Identifies configuration objects that are no longer referenced anywhere, based o
 
 Detects unused:
 
-- Enforcement Profiles (including default enforcement profiles)
+- Enforcement Profiles, including default enforcement profiles
 - Enforcement Policies
 - Role Mapping Policies
 - Roles
 
 Role usage is resolved across:
 
-- Role Mapping Policies (assigned roles, default roles and Tips:Role conditions)
-- Enforcement Policies (Tips:Role conditions)
-- Guest Operator Profiles (via the built-in [Guest Roles] mapping)
+- Role Mapping Policies, including assigned roles, default roles and `Tips:Role` conditions
+- Enforcement Policies using `Tips:Role` conditions
+- Guest Operator Profiles via the built-in `[Guest Roles]` mapping
 
-ClearPass built-in objects (named with square brackets) are automatically excluded. Each category provides a one-click **Copy All** option for cleanup workflows.
+ClearPass built-in objects named with square brackets are automatically excluded.
+
+Each category provides a one-click **Copy All** option for cleanup workflows.
+
+Unused Enforcement Profiles are clickable and provide a dedicated detail view showing:
+
+- Profile ID
+- Profile type
+- Enforcement action
+- Description, when configured
+- Enforcement Attributes
+- Attribute type
+- Attribute name
+- Attribute value
+
+Enforcement Profile details are retrieved through the existing ClearPass REST API integration and cached for reuse after retrieval.
 
 ---
 
@@ -206,6 +230,12 @@ Browser
 Flask Web Application
     │
     ├── Authentication (RADIUS)
+    │
+    ├── Policy Visualisation
+    │
+    ├── Dependency Analysis
+    │
+    ├── Unused Object Analysis
     │
     ├── ClearPass REST APIs
     │       ├── Services
@@ -241,6 +271,8 @@ The API client requires access to:
 - Role Mapping Policies
 - Enforcement Policies
 - Enforcement Profiles
+- Roles
+- Guest Operator Profiles
 - Endpoint Repository data
 
 ---
@@ -314,17 +346,21 @@ If SQL access is unavailable, the application can automatically fall back to the
 
 ### Data Source Summary
 
+### Data Source Summary
+
 | Function | Data Source | Authentication |
-|-----------|------------|----------------|
+|-----------|-------------|----------------|
 | User Login | ClearPass RADIUS | PAP |
 | Service Discovery | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Role Mapping Policies | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Enforcement Policies | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Enforcement Profiles | ClearPass REST API | OAuth 2.0 Client Credentials |
+| Roles | ClearPass REST API | OAuth 2.0 Client Credentials |
+| Guest Operator Profiles | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Endpoint Repository | ClearPass REST API | OAuth 2.0 Client Credentials |
-| Endpoint Profiling Cache | PostgreSQL (tips_endpoint_profiles) | appexternal |
----
+| Endpoint Profiling Cache | PostgreSQL (`tips_endpoint_profiles`) | `appexternal` |
 
+---
 ## Project Structure
 
 ```text
@@ -341,8 +377,10 @@ clearpass-policy-visualiser
 ├── cp_enforcement.py
 ├── cp_graph.py
 ├── cp_health.py
+├── cp_object_graph.py
 ├── cp_role_mapping.py
 ├── cp_services.py
+├── cp_unused_objects.py
 │
 ├── auth/
 │
@@ -350,7 +388,17 @@ clearpass-policy-visualiser
 │   └── endpoint_profiles.sql
 │
 ├── templates/
+│   ├── endpoint_details.html
+│   ├── enforcement_profile_detail.html
+│   ├── index.html
+│   ├── login.html
+│   ├── object_detail.html
+│   ├── repository_search.html
+│   ├── service.html
+│   └── unused_objects.html
+│
 ├── static/
+│   └── service_graph.js
 │
 ├── screenshots/
 │
@@ -549,7 +597,7 @@ Quickly understand service dependencies and enforcement profile usage without ma
 
 ### Configuration Cleanup
 
-Identify unused Enforcement Profiles, Enforcement Policies, Role Mapping Policies and Roles that are candidates for removal, and export the lists for review or bulk cleanup.
+Identify unused Enforcement Profiles, Enforcement Policies, Role Mapping Policies and Roles that are candidates for removal. Copy object lists by category for review and drill into unused Enforcement Profiles to inspect their configuration before cleanup.
 
 ### Operational Troubleshooting
 
@@ -561,7 +609,7 @@ Search endpoint repositories, analyse rule conditions and verify profile assignm
 
 Planned enhancements:
 
-- Clickable unused objects linking to dependency views 
+- Additional unused-object drill-down views
 - Admin vs ReadOnly UI functions
 - Role-based authorisation controls
 - Impact analysis reporting
@@ -573,10 +621,22 @@ Planned enhancements:
 
 ## Changelog
 
+### v1.1.1
+
+- Added clickable unused Enforcement Profiles
+- Added dedicated Unused Enforcement Profile detail view
+- Added Enforcement Profile metadata display including ID, type, action and description
+- Added detailed Enforcement Attribute visibility including attribute type, name and value
+- Added Enforcement Profile caching for detail lookups
+- Improved Unused Enforcement Profile layout with Profile Information and Enforcement Attributes displayed side by side
+- Standardised ClearPass Policy Visualizer headers across analysis views
+- Standardised page-level Back navigation on the top-right
+- Updated Service Visualisation navigation and header layout for UI consistency
+
 ### v1.1.0
 
 - Added Unused Object analysis for Enforcement Profiles, Enforcement Policies, Role Mapping Policies and Roles
-- Full role dependency analysis including Guest Operator Profiles via the [Guest Roles] mapping
+- Full role dependency analysis including Guest Operator Profiles via the `[Guest Roles]` mapping
 - Correct handling of default enforcement profiles in dependency analysis
 - New clickable dashboard card and dedicated Unused Objects page
 - Copy All per category for cleanup workflows
@@ -615,6 +675,6 @@ Always validate configuration changes before applying them to production environ
 
 ---
 
-**ClearPass Policy Visualiser v1.1.0**
+**ClearPass Policy Visualiser v1.1.1**
 
 Visualise. Analyse. Troubleshoot.

@@ -14,6 +14,12 @@ from cp_unused_objects import (
     get_unused_object_summary
 )
 
+from cp_object_graph import (
+    build_enforcement_policy_graph,
+    build_role_mapping_graph
+)
+
+from cp_object_graph import build_enforcement_policy_graph
 
 import time
 import cp_cache
@@ -48,12 +54,15 @@ from cp_health import check_clearpass
 
 from cp_enforcement import (
     build_profile_reference_cache,
+    get_enforcement_profile,
     PROFILE_CACHE,
     ENFORCEMENT_POLICY_CACHE
 )
 
 from cp_role_mapping import (
     ROLE_MAPPING_CACHE,
+    ROLE_CACHE,
+    build_role_cache,
     build_role_mapping_reference_cache
 )
 
@@ -251,6 +260,7 @@ def refresh_cache():
 
     cp_cache.services_cache = []
     cp_cache.profile_reference_cache = {}
+    cp_cache.role_cache = {}
 
     cp_cache.health_cache = (
         check_clearpass()
@@ -269,6 +279,7 @@ def refresh_cache():
     PROFILE_CACHE.clear()
     ENFORCEMENT_POLICY_CACHE.clear()
     ROLE_MAPPING_CACHE.clear()
+    ROLE_CACHE.clear()
 
     cp_cache.services_cache = (
         get_all_services()
@@ -277,6 +288,23 @@ def refresh_cache():
     cp_cache.services_cache = sorted(
         cp_cache.services_cache,
         key=lambda x: x["order_no"]
+    )
+
+    logger.info(
+        "Building Role Cache..."
+    )
+
+    role_cache = build_role_cache()
+
+    ROLE_CACHE.update(
+        role_cache
+    )
+
+    cp_cache.role_cache = ROLE_CACHE
+
+    logger.info(
+        f"Roles cached: "
+        f"{len(cp_cache.role_cache)}"
     )
 
     cp_cache.profile_reference_cache = (
@@ -393,6 +421,24 @@ def initialise_cache():
     )
 
     preload_endpoint_data()
+
+    logger.info(
+        "Building Role Cache..."
+    )
+
+    role_cache = build_role_cache()
+
+    ROLE_CACHE.clear()
+    ROLE_CACHE.update(
+        role_cache
+    )
+
+    cp_cache.role_cache = ROLE_CACHE
+
+    logger.info(
+        f"Roles cached: "
+        f"{len(cp_cache.role_cache)}"
+    )
 
     logger.info(
         "Building Enforcement Profile Reference Cache..."
@@ -596,6 +642,20 @@ def repository_search():
         version=VERSION
     )
 
+@app.route("/object/rolemap/<path:name>")
+@login_required
+def object_rolemap(name):
+
+    graph = build_role_mapping_graph(name)
+
+    return render_template(
+        "object_detail.html",
+        object_name=name,
+        object_type_label="Role Mapping Policy",
+        graph_kind="rolemap",
+        graph=graph
+    )
+
 @app.route("/unused-objects")
 @login_required
 def unused_objects():
@@ -611,6 +671,33 @@ def unused_objects():
     return render_template(
         "unused_objects.html",
         unused=unused
+    )
+
+@app.route("/object/policy/<path:name>")
+@login_required
+def object_policy(name):
+
+    graph = build_enforcement_policy_graph(name)
+
+    return render_template(
+        "object_detail.html",
+        object_name=name,
+        object_type_label="Enforcement Policy",
+        graph_kind="policy",
+        graph=graph
+    )
+
+@app.route("/object/profile/<path:name>")
+@login_required
+def object_profile(name):
+
+    profile = get_enforcement_profile(
+        name
+    )
+
+    return render_template(
+        "enforcement_profile_detail.html",
+        profile=profile
     )
 
 if __name__ == "__main__":

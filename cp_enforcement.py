@@ -45,12 +45,27 @@ def get_enforcement_policy(policy_name):
 
 def get_enforcement_profile(profile_name):
 
+    if profile_name in PROFILE_CACHE:
+
+        return PROFILE_CACHE[
+            profile_name
+        ]
+
     login = get_login()
 
-    return ApiEnforcementProfile.get_enforcement_profile_name_by_name(
-        login,
-        name=profile_name
+    profile = (
+        ApiEnforcementProfile
+        .get_enforcement_profile_name_by_name(
+            login,
+            name=profile_name
+        )
     )
+
+    PROFILE_CACHE[
+        profile_name
+    ] = profile
+
+    return profile
 
 def build_profile_reference_cache():
 
@@ -261,6 +276,7 @@ def get_enforcement_details(policy_name):
 
     result = {
         "name": policy["name"],
+        "description": policy.get("description"),
 
         "default_enforcement_profile":
             policy.get(
@@ -406,6 +422,9 @@ def get_enforcement_details(policy_name):
                         "name": profile["name"],
                         "profile_id":
                             profile.get("id"),
+                        "description":
+                            profile.get("description"),
+
                         "action": profile.get(
                             "action"
                         ),

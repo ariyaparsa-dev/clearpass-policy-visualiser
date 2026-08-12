@@ -28,6 +28,23 @@ body{
     color:var(--text);
 }
 
+.navbar {
+    background-color: #111827;
+    border-bottom: 3px solid var(--hpe-green);
+}
+
+.brand-green {
+    color: var(--hpe-green);
+    font-weight: 700;
+}
+
+.service-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
 h2 {
     color: white;
     margin-top: 30px;
@@ -59,7 +76,7 @@ h2 {
     color:var(--hpe-green);
     font-weight:700;
     font-size:1.5rem;
-    margin-bottom:15px;
+    margin:0;
 }
 
 .status-disabled {
@@ -194,7 +211,7 @@ h2 {
 }
 
 .legend-attribute {
-    border-left-color: #CBD5E1;
+    border-left-color: #94A3B8;
 }
 .node-info-panel {
 
@@ -240,21 +257,41 @@ h2 {
 
 <body>
 
+<nav class="navbar navbar-expand-lg navbar-dark">
+
+    <div class="container-fluid">
+
+        <span class="navbar-brand">
+
+            <span class="brand-green">
+                ClearPass
+            </span>
+
+            Policy Visualizer
+
+        </span>
+
+    </div>
+
+</nav>
 
 <div class="content-wrapper">
 
-<div style="margin-bottom:20px;">
-    <a href="/"
-       class="btn btn-success">
-       ← Back to Dashboard
-    </a>
-</div>
+    <div class="service-header">
 
-<h1
-    id="serviceName"
-    class="service-title">
-    {{ service.name }}
-</h1>
+        <h1
+            id="serviceName"
+            class="service-title">
+            {{ service.name }}
+        </h1>
+
+        <a
+            href="{{ url_for('home') }}"
+            class="btn btn-success">
+            ← Back to Dashboard
+        </a>
+
+    </div>
 
 
 <div class="card mb-4">

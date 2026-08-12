@@ -811,6 +811,20 @@ function resetCollapsedBranches() {
             `;
         }
 
+        if (data.description) {
+
+            extraDetails += `
+                <div class="node-info-label">
+                    Description
+                </div>
+
+                <div class="node-info-value">
+                    ${data.description}
+                </div>
+            `;
+        }
+
+
         const evaluationAlgorithm =
             data.rule_combine_algo ||
             data.rule_eval_algo;
@@ -1504,16 +1518,16 @@ function resetCollapsedBranches() {
         window.cy.elements(":visible").layout(layoutOptions);
 
     layout.on("layoutstop", function () {
-
         window.cy.resize();
+        window.cy.fit(window.cy.elements(":visible"), 60);
 
-        window.cy.fit(
-            window.cy.elements(":visible"),
-            250
-        );
-
+        setTimeout(function () {
+            window.cy.resize();
+            window.cy.fit(window.cy.elements(":visible"), 60);
+            window.cy.center();
+        }, 250);
     });
-
+    
     layout.run();
 
 const resetButton =

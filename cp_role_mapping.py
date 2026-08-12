@@ -7,6 +7,7 @@ from cp_endpoint import (
 
 from cp_client import get_login
 ROLE_MAPPING_CACHE = {}
+ROLE_CACHE = {}
 
 def build_qualified_attribute(
     condition_type,
@@ -24,6 +25,34 @@ def get_role_mapping_policy(policy_name):
     return ApiPolicyElements.get_role_mapping_name_by_name(
         login,
         name=policy_name
+    )
+
+def build_role_cache():
+
+    login = get_login()
+
+    response = ApiPolicyElements.get_role(
+        login,
+        limit=1000
+    )
+
+    roles = (
+        response
+        .get("_embedded", {})
+        .get("items", [])
+    )
+
+    return {
+        role.get("name"): role
+        for role in roles
+        if role.get("name")
+    }
+
+def get_cached_role(role_name):
+
+    return ROLE_CACHE.get(
+        role_name,
+        {}
     )
 
 def build_role_mapping_reference_cache():
@@ -90,11 +119,32 @@ def get_role_mapping_details(policy_name):
         policy_name
     )
 
+    default_role_name = policy.get(
+        "default_role_name"
+    )
+
+    default_role_description = None
+
+    if default_role_name:
+
+        default_role_details = get_cached_role(
+            default_role_name
+        )
+
+        default_role_description = (
+            default_role_details.get(
+                "description"
+            )
+        )
+
     result = {
         "name": policy.get("name"),
+        "description": policy.get("description"),
         "default_role_name": policy.get(
             "default_role_name"
         ),
+        "default_role_description": 
+            default_role_description,
         "rule_combine_algo": policy.get(
             "rule_combine_algo"
         ),
@@ -244,6 +294,24 @@ def get_role_mapping_details(policy_name):
             )
         )
 
+        role_name = rule.get(
+            "role_name"
+        )
+
+        role_description = None
+
+        if role_name:
+
+            role_details = get_cached_role(
+                role_name
+            )
+
+            role_description = (
+                role_details.get(
+                    "description"
+                )
+            )
+
 #        print(
 #            f"{policy_name} | "
 #            f"{rule.get('role_name')} | "
@@ -254,12 +322,21 @@ def get_role_mapping_details(policy_name):
             {
                 "condition": condition_label,
                 "match_type": match_type,
-                "role_name": rule.get(
-                    "role_name"
-                ),
-                "attributes": condition_attributes,
-                "rule_match_count": rule_match_count,
-                "rule_match_label": rule_match_label
+
+                "role_name":
+                    role_name,
+
+                "role_description":
+                    role_description,
+
+                "attributes":
+                    condition_attributes,
+
+                "rule_match_count":
+                    rule_match_count,
+
+                "rule_match_label":
+                    rule_match_label
             }
         )
 

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>{{ object_name }}</title>
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet">
+
+  <link
+    rel="icon"
+    type="image/x-icon"
+    href="{{ url_for('static', filename='favicon.ico') }}">
+
+    <style>
+    :root{
+        --hpe-green:#01A982;
+        --bg:#0B111B;
+        --card:#151D29;
+        --card2:#1B2432;
+        --border:#2D3748;
+        --text:#E2E8F0;
+    }
+    body{ background:var(--bg); color:var(--text); }
+    .card{ background:var(--card); border:1px solid var(--border); }
+    .card-header{ background:var(--card2); color:white; border-bottom:1px solid var(--border); }
+    .service-title{ color:var(--hpe-green); font-weight:700; font-size:1.8rem; margin:20px 0; }
+    .content-wrapper{ width:100%; padding:20px; }
+    .graph-container{ height:650px; width:100%; background:#101826; border:1px solid #2D3748; border-radius:12px; }
+    .graph-legend{ margin-top:15px; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .legend-item{ padding:6px 10px; border-radius:6px; background:#182130; border-left:4px solid #01A982; font-size:0.70rem; color:#E2E8F0; font-weight:500; }
+    .legend-enforcement{ border-left-color:#F97316; }
+    .legend-condition{ border-left-color:#BE123C; }
+    .legend-profile{ border-left-color:#FACC15; }
+    .legend-attribute{ border-left-color:#94A3B8; }
+    .legend-role-mapping{ border-left-color:#06B6D4; }
+    .legend-role-condition{ border-left-color:#074c5e; }
+    .legend-mapped-role{ border-left-color:#22C55E; }
+    .node-info-panel{ background:#182130; border:1px solid #2D3748; border-radius:12px; padding:20px; min-height:650px; color:#E2E8F0; overflow-y:auto; }
+    .node-info-label{ color:#01A982; font-weight:700; }
+    .node-info-value{ margin-bottom:2px; }
+    .status-ok{ color:#01A982; font-weight:700; }
+    .export-menu .dropdown-item{ font-size:0.8rem; color:#E2E8F0; }
+    .export-menu .dropdown-item:hover{ background:#182130; color:#01A982; }
+    </style>
+
+
+</head>
+
+<body>
+
+<div class="content-wrapper">
+
+    <div style="margin-bottom:20px;">
+        <a
+        href="{{ url_for('unused_objects') }}"
+        class="btn btn-success">
+        ← Back to Unused Objects
+        </a>
+    </div>
+
+    <h1
+        id="serviceName"
+        class="service-title">
+        {{ object_type_label }}: {{ object_name }}
+    </h1>
+
+    <div class="card mb-4">
+
+        <div class="card-header">
+            Visual Policy Graph
+        </div>
+
+        <div class="card-body">
+
+            <div class="mb-3">
+                <button id="resetLayoutBtn" class="btn btn-success btn-sm">Reset Layout</button>
+                <button id="fitGraphBtn" class="btn btn-outline-light btn-sm ms-2">Fit Graph</button>
+                <button id="centerGraphBtn" class="btn btn-outline-light btn-sm ms-2">Centre Graph</button>
+
+                <div class="dropdown d-inline-block ms-2">
+                    <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button"
+                        id="exportMenuButton" data-bs-toggle="dropdown" aria-expanded="false">Export</button>
+                    <ul class="dropdown-menu dropdown-menu-dark export-menu">
+                        <li>#PNG</a></li>
+                        <li>#</li>
+                    </ul>
+                </div>
+
+                <input type="text" id="graphSearch" placeholder="Search nodes..."
+                    style="width:220px;height:31px;margin-left:10px;padding:4px 8px;background:#182130;color:#E2E8F0;border:1px solid #2D3748;border-radius:4px;vertical-align:middle;">
+                <button id="clearSearchBtn" class="btn btn-outline-light btn-sm ms-2">Clear</button>
+                <button id="prevSearchBtn" class="btn btn-outline-light btn-sm ms-2" style="min-width:36px;font-size:1rem;font-weight:bold;">❮</button>
+                <span id="searchResultCount" style="margin-left:8px;color:#01A982;font-size:0.85rem;font-weight:600;margin-right:8px;"></span>
+                <button id="nextSearchBtn" class="btn btn-outline-light btn-sm" style="min-width:36px;font-size:1rem;font-weight:bold;">❯</button>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-9">
+                    <div id="policyGraph" class="graph-container"></div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="node-info-panel">
+                        <h5>Selected Object</h5>
+                        <hr>
+                        <div id="nodeInfoContent">Click a node to view details.</div>
+                        <hr>
+                        <h6>Legend</h6>
+
+                        <div class="graph-legend">
+
+                            {% if graph_kind == "rolemap" %}
+
+                                <div class="legend-item legend-role-mapping">Role Mapping Policy</div>
+                                <div class="legend-item legend-role-condition">Role Mapping Rule</div>
+                                <div class="legend-item legend-mapped-role">Mapped Role</div>
+
+                            {% else %}
+
+                                <div class="legend-item legend-enforcement">Enforcement Policy</div>
+                                <div class="legend-item legend-condition">Rule Condition</div>
+                                <div class="legend-item legend-profile">Enforcement Profile</div>
+                                <div class="legend-item legend-attribute">Attribute</div>
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script type="application/json" id="graph-data">
+{{ graph | tojson }}
+</script>
+
+<script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+<script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+
+<script src="{{ url_for('static', filename='service_graph.js') }}"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

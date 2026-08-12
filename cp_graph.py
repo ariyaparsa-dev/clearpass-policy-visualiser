@@ -24,6 +24,8 @@ def build_service_graph(service):
             "id": service_id,
             "label": service.get("name", "Unknown Service"),
             "type": "service",
+            "description":
+                service.get("description"),
 
             "auth_method_count":
                 len(
@@ -218,6 +220,8 @@ def build_service_graph(service):
                 "type": "role_mapping",
                 "expandable": True,
                 "collapsed": True,
+                "description":
+                    role_details.get("description"),
 
                 "rule_combine_algo": role_details.get(
                     "rule_combine_algo"
@@ -336,6 +340,7 @@ def build_service_graph(service):
                             "label": f"Role: {mapped_role}",
                             "type": "mapped_role",
                             "role_name": mapped_role,
+                            "description": rule.get("role_description"),
                             "parent_branch": rule_node
                         }
                     })
@@ -364,6 +369,8 @@ def build_service_graph(service):
                         "label": f"Default Role\n{default_role}",
                         "type": "mapped_role",
                         "role_name": default_role,
+                        "description":
+                            role_details.get("default_role_description"),
                         "parent_branch": role_node
                     }
                 })
@@ -438,6 +445,8 @@ def build_service_graph(service):
                 "type": "enforcement_policy",
                 "expandable": True,
                 "collapsed": True,
+                "description":
+                    enforcement_details.get("description"),
 
                 "default_profile":
                     enforcement_details.get(
@@ -589,6 +598,8 @@ def build_service_graph(service):
                             "id": profile_node,
                             "label": f"EProf: {profile_name}",
                             "type": "enforcement_profile",
+                            "description":
+                                profile.get("description"),
 
                             "profile_type":
                                 profile.get(
