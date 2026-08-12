@@ -929,7 +929,8 @@ function resetCollapsedBranches() {
 
         if (
             data.attributes &&
-            data.attributes.length > 0
+            data.attributes.length > 0 &&
+            data.type !== "enforcement_profile"
         ) {
 
             extraDetails += `
