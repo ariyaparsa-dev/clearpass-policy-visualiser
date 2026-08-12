@@ -82,6 +82,47 @@ def build_profile_reference_cache():
                 policy_name
             )
 
+            service_name = service.get(
+                "name",
+                "Unknown Service"
+            )
+
+            default_profile = policy.get(
+                "default_enforcement_profile"
+            )
+
+            if (
+                default_profile
+                and not service_name.startswith("--------")
+            ):
+
+                if default_profile not in references:
+
+                    references[default_profile] = {
+                        "policies": {},
+                        "services": {}
+                    }
+
+                if (
+                    policy_name
+                    not in references[default_profile]["policies"]
+                ):
+
+                    references[default_profile]["policies"][policy_name] = {
+                        "name": policy_name,
+                        "services": {}
+                    }
+
+                references[default_profile]["policies"][policy_name]["services"][service_name] = {
+                    "name": service_name,
+                    "id": service.get("id")
+                }
+
+                references[default_profile]["services"][service_name] = {
+                    "name": service_name,
+                    "id": service.get("id")
+                }
+
             for rule in policy.get(
                 "rules",
                 []

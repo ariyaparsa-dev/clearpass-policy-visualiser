@@ -7,3 +7,4 @@ health_cache = None
 health_cache_time = 0
 
 last_refresh = None
+unused_objects_cache = None

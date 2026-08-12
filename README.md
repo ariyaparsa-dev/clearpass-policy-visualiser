@@ -24,6 +24,8 @@ Visualise, analyse and troubleshoot Aruba ClearPass Services, Role Mapping Polic
 
 - Supports impact analysis by identifying services, policies, enforcement profiles and roles affected by proposed configuration changes.
 
+- Identifies unused Enforcement Profiles, Enforcement Policies, Role Mapping Policies and Roles through full dependency analysis, helping administrators find cleanup candidates.
+
 - Includes endpoint repository analysis with matching object counts, endpoint drill-down and profiling visibility.
 
 - Uses ClearPass REST APIs secured with OAuth 2.0 Client Credentials Grant for service, policy and enforcement data retrieval.
@@ -85,6 +87,15 @@ Visualise, analyse and troubleshoot Aruba ClearPass Services, Role Mapping Polic
 <p align="center">
   <img src="screenshots/screenshot-9.jpg" alt="Endpoint Details" width="800">
 </p>
+
+---
+
+### Unused Objects
+
+<p align="center">
+  <img src="screenshots/screenshot-10.jpg" alt="Endpoint Details" width="800">
+</p>
+
 ---
 
 ## Features
@@ -165,6 +176,27 @@ Provides visibility into:
 
 ---
 
+### Unused Object Analysis
+
+Identifies configuration objects that are no longer referenced anywhere, based on real dependency analysis rather than name matching.
+
+Detects unused:
+
+- Enforcement Profiles (including default enforcement profiles)
+- Enforcement Policies
+- Role Mapping Policies
+- Roles
+
+Role usage is resolved across:
+
+- Role Mapping Policies (assigned roles, default roles and Tips:Role conditions)
+- Enforcement Policies (Tips:Role conditions)
+- Guest Operator Profiles (via the built-in [Guest Roles] mapping)
+
+ClearPass built-in objects (named with square brackets) are automatically excluded. Each category provides a one-click **Copy All** option for cleanup workflows.
+
+---
+
 ## Architecture
 
 ```text
@@ -179,7 +211,9 @@ Flask Web Application
     │       ├── Services
     │       ├── Role Mapping Policies
     │       ├── Enforcement Policies
-    │       └── Enforcement Profiles
+    │       ├── Enforcement Profiles
+    │       ├── Roles
+    │       └── Operator Profiles
     │
     └── PostgreSQL (Optional)
             └── Endpoint Profiling Cache
@@ -513,6 +547,10 @@ Provide a graphical representation of ClearPass policy relationships for operati
 
 Quickly understand service dependencies and enforcement profile usage without manually navigating through ClearPass.
 
+### Configuration Cleanup
+
+Identify unused Enforcement Profiles, Enforcement Policies, Role Mapping Policies and Roles that are candidates for removal, and export the lists for review or bulk cleanup.
+
 ### Operational Troubleshooting
 
 Search endpoint repositories, analyse rule conditions and verify profile assignments.
@@ -523,14 +561,31 @@ Search endpoint repositories, analyse rule conditions and verify profile assignm
 
 Planned enhancements:
 
+- Clickable unused objects linking to dependency views 
 - Admin vs ReadOnly UI functions
 - Role-based authorisation controls
 - Impact analysis reporting
 - Additional export options
 - SVG graph export
-- Cached startup mode
-- Multi-server ClearPass support
 - Standalone packaged release
+
+---
+
+## Changelog
+
+### v1.1.0
+
+- Added Unused Object analysis for Enforcement Profiles, Enforcement Policies, Role Mapping Policies and Roles
+- Full role dependency analysis including Guest Operator Profiles via the [Guest Roles] mapping
+- Correct handling of default enforcement profiles in dependency analysis
+- New clickable dashboard card and dedicated Unused Objects page
+- Copy All per category for cleanup workflows
+- Results cached at startup and refreshed on demand for fast page loads
+- Reduced log verbosity
+
+### v1.0.0
+
+- Initial public release
 
 ---
 
@@ -560,6 +615,6 @@ Always validate configuration changes before applying them to production environ
 
 ---
 
-**ClearPass Policy Visualiser v1.0.0**
+**ClearPass Policy Visualiser v1.1.0**
 
 Visualise. Analyse. Troubleshoot.

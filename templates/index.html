@@ -32,6 +32,24 @@
             min-height: 100vh;
         }
 
+        .stat-card-clickable {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .stat-card-clickable:hover {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .stat-card-clickable .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 12px rgba(1,169,130,.45);
+            border-left-color: #01A982;
+            cursor: pointer;
+        }
+
         .navbar {
             background-color: #111827;
             border-bottom: 3px solid var(--hpe-green);
@@ -61,6 +79,10 @@
             border-radius: 10px;
             padding: 10px;
             height: 100%;
+
+            transition:
+                transform 0.2s ease-in-out,
+                box-shadow 0.2s ease-in-out;
         }
 
         .stat-number {
@@ -344,8 +366,10 @@
 <div class="container-fluid mt-4">
 
     <div class="row mb-4">
+
         <div class="col">
             <div class="stat-card">
+
                 <div>
                     <strong>Total Services</strong>
                 </div>
@@ -363,9 +387,6 @@
 
             </div>
         </div>
-
-
-
 
         <div class="col">
             <div class="stat-card">
@@ -422,6 +443,68 @@
                     {{ stats.webauth_services }}
                 </div>
             </div>
+        </div>
+
+        <div class="col">
+
+            <a
+                href="{{ url_for('unused_objects') }}"
+                class="stat-card-clickable"
+            >
+
+                <div class="stat-card">
+
+                    <div>
+                        <strong>Unused Objects</strong>
+                    </div>
+
+                    <div
+                        style="
+                            font-size:0.65rem;
+                            color:#9CA3AF;
+                            margin-top:2px;
+                        "
+                    >
+                        Click for details
+                    </div>
+
+                    <div
+                        style="
+                            font-size:0.80rem;
+                            margin-top:6px;
+                        "
+                    >
+                        Enf Profiles:
+                        {{ unused.profiles.unused_count }}
+                        /
+                        {{ unused.profiles.total_count }}
+                    </div>
+
+                    <div style="font-size:0.80rem;">
+                        Enf Policies:
+                        {{ unused.policies.unused_count }}
+                        /
+                        {{ unused.policies.total_count }}
+                    </div>
+
+                    <div style="font-size:0.80rem;">
+                        Role Maps:
+                        {{ unused.role_maps.unused_count }}
+                        /
+                        {{ unused.role_maps.total_count }}
+                    </div>
+
+                    <div style="font-size:0.80rem;">
+                        Roles:
+                        {{ unused.roles.unused_count }}
+                        /
+                        {{ unused.roles.total_count }}
+                    </div>
+
+                </div>
+
+            </a>
+
         </div>
 
     </div>

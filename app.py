@@ -10,6 +10,11 @@ from auth import login_manager
 from auth.models import RadiusUser
 from auth.routes import auth_bp
 
+from cp_unused_objects import (
+    get_unused_object_summary
+)
+
+
 import time
 import cp_cache
 import logging
@@ -226,13 +231,14 @@ def home():
             ]
         )
     }
-
+    unused = cp_cache.unused_objects_cache
 
     return render_template(
         "index.html",
         services=services,
         health=health,
         stats=stats,
+        unused=unused,
         last_refresh=cp_cache.last_refresh,
         version=VERSION
     )
@@ -295,6 +301,14 @@ def refresh_cache():
         f"Built reference cache for "
         f"{len(cp_cache.profile_reference_cache)} "
         f"Enforcement Profiles"
+    )
+
+    logger.info(
+        "Building Unused Objects Cache..."
+    )
+
+    cp_cache.unused_objects_cache = (
+        get_unused_object_summary()
     )
 
     logger.info("Cache refresh complete.")
@@ -394,6 +408,14 @@ def initialise_cache():
 
     cp_cache.role_mapping_reference_cache = (
         build_role_mapping_reference_cache()
+    )
+
+    logger.info(
+        "Building Unused Objects Cache..."
+    )
+
+    cp_cache.unused_objects_cache = (
+        get_unused_object_summary()
     )
 
     logger.info(
@@ -536,6 +558,7 @@ def endpoint_details(id):
         version=VERSION
     )
 
+
 @app.route("/repository-search")
 @login_required
 def repository_search():
@@ -571,6 +594,23 @@ def repository_search():
         "repository_search.html",
         result=result,
         version=VERSION
+    )
+
+@app.route("/unused-objects")
+@login_required
+def unused_objects():
+
+    unused = cp_cache.unused_objects_cache
+
+    if unused is None:
+
+        unused = get_unused_object_summary()
+
+        cp_cache.unused_objects_cache = unused
+
+    return render_template(
+        "unused_objects.html",
+        unused=unused
     )
 
 if __name__ == "__main__":

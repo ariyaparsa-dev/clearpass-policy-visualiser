@@ -4,6 +4,11 @@ __pycache__/
 *.pyo
 *.pyd
 
+# test scripts and other copies
+test_*.py
+*copy*
+templates/*copy*
+
 # Virtual Environments
 .venv/
 venv/
