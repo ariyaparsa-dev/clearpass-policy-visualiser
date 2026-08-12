@@ -1524,6 +1524,8 @@ if (resetButton) {
         function () {
             resetCollapsedBranches();
             selectedNode = null;
+            window.cy.nodes().removeStyle("border-width border-color");
+            window.cy.elements().removeClass("search-match active-search-match");
 
             const resetLayout =
                 window.cy.elements(":visible").layout({
@@ -1707,6 +1709,8 @@ if (searchBox) {
             window.cy.elements().removeClass(
                 "search-match active-search-match"
             );
+            window.cy.nodes().removeStyle("border-width border-color");
+            selectedNode = null;
 
             if (!searchText) {
 
