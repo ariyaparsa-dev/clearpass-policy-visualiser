@@ -1,6 +1,6 @@
 clearpass:
-  server: https://cp1-611.arubatechs.com:443/api
+  server: https://clearpass.example.com/api
   grant_type: client_credentials
-  client_secret: zwxB0LNOmZHlSsJvMltbBJ4P8gRSdAlWNHbz4XVHJ6V9
-  client_id: mcpapi
+  client_secret: (your secret key))
+  client_id: (your clearpass client_id)
   verify_ssl: false
