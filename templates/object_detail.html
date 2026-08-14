@@ -22,7 +22,21 @@
         --border:#2D3748;
         --text:#E2E8F0;
     }
+
     body{ background:var(--bg); color:var(--text); }
+
+        .navbar {
+            background-color: #111827;
+            border-bottom: 3px solid var(--hpe-green);
+        }
+
+
+        .brand-green {
+            color: var(--hpe-green);
+            font-weight: 700;
+        }
+
+
     .card{ background:var(--card); border:1px solid var(--border); }
     .card-header{ background:var(--card2); color:white; border-bottom:1px solid var(--border); }
     .service-title{ color:var(--hpe-green); font-weight:700; font-size:1.8rem; margin:20px 0; }
@@ -43,6 +57,16 @@
     .status-ok{ color:#01A982; font-weight:700; }
     .export-menu .dropdown-item{ font-size:0.8rem; color:#E2E8F0; }
     .export-menu .dropdown-item:hover{ background:#182130; color:#01A982; }
+
+    @media (max-width: 576px) {
+
+        .page-header {
+            align-items: flex-start !important;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+    }    
     </style>
 
 
@@ -50,15 +74,38 @@
 
 <body>
 
+<nav class="navbar navbar-expand-lg navbar-dark">
+
+    <div class="container-fluid">
+
+        <span class="navbar-brand">
+
+            <span class="brand-green">
+                ClearPass
+            </span>
+
+            Policy Visualiser
+
+        </span>
+
+    </div>
+
+</nav>
+
+
 <div class="content-wrapper">
 
-    <div style="margin-bottom:20px;">
-        <a
+    <div
+        class="
+            d-flex
+            justify-content-end
+            mb-3">
+        <a 
         href="{{ url_for('unused_objects') }}"
         class="btn btn-success">
-        ← Back to Unused Objects
+        ← Back to Unused Objects        
         </a>
-    </div>
+    </div>    
 
     <h1
         id="serviceName"

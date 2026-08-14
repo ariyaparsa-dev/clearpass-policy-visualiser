@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Setup Complete - ClearPass Policy Visualizer
+    </title>
+
+    <style>
+
+        :root {
+            --hpe-green: #01A982;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        .navbar {
+            background-color: #111827;
+            border-bottom: 3px solid var(--hpe-green);
+            padding: 8px 12px;
+        }
+
+        .navbar-brand {
+            display: inline-block;
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+
+        .brand-green {
+            color: var(--hpe-green);
+            font-weight: 700;
+        }
+
+        .container {
+            width: min(
+                720px,
+                calc(100% - 40px)
+            );
+            margin: 80px auto;
+        }
+
+        .card {
+            padding: 32px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+        }
+
+        .success {
+            margin-bottom: 24px;
+            padding: 16px 18px;
+            background: #052e16;
+            border: 1px solid #166534;
+            border-radius: 8px;
+            color: #bbf7d0;
+        }
+
+        .page-title {
+            margin: 0 0 12px;
+            color: #ffffff;
+            font-size: 28px;
+        }
+
+        .description {
+            margin: 0;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .next-step {
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid #334155;
+        }
+
+        .next-step-title {
+            margin: 0 0 8px;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .next-step-description {
+            margin: 0;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 28px;
+        }
+
+        .start-button {
+            border: 0;
+            border-radius: 6px;
+            padding: 12px 22px;
+            background: #22c55e;
+            color: #052e16;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .start-button:hover {
+            background: #16a34a;
+        }
+
+        .start-button:disabled {
+            background: #475569;
+            color: #cbd5e1;
+            cursor: wait;
+        }
+
+        .footer {
+            margin-top: 36px;
+            text-align: center;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .validation-box {
+            margin-top: 28px;
+            padding: 18px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+        }
+
+        .validation-title {
+            margin: 0 0 14px;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .validation-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .validation-item:first-of-type {
+            margin-top: 0;
+        }
+
+        .validation-icon {
+            width: 20px;
+            flex-shrink: 0;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .validation-success {
+            color: #22c55e;
+        }
+
+        .validation-failed {
+            color: #ef4444;
+        }
+
+        .validation-skipped {
+            color: #94a3b8;
+        }
+
+        @media (max-width: 700px) {
+
+            .container {
+                margin-top: 40px;
+            }
+
+            .card {
+                padding: 24px;
+            }
+
+            .actions {
+                justify-content: stretch;
+            }
+
+            .start-button {
+                width: 100%;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <nav class="navbar">
+
+        <span class="navbar-brand">
+
+            <span class="brand-green">
+                ClearPass
+            </span>
+
+            Policy Visualiser
+
+        </span>
+
+    </nav>
+
+    <main class="container">
+
+        <div class="card">
+
+            <div class="success">
+                Configuration validated and saved successfully.
+            </div>
+
+            <h1 class="page-title">
+                Initial Setup Complete
+            </h1>
+
+            <p class="description">
+                The ClearPass Policy Visualiser has
+                loaded the new configuration
+                successfully.
+            </p>
+
+            {% if validation %}
+
+                <div class="validation-box">
+
+                    <h2 class="validation-title">
+                        Configuration Validation
+                    </h2>
+
+                    {% for name, result in validation.items() %}
+
+                        <div class="validation-item">
+
+                            {% if result.get("skipped") %}
+
+                                <span
+                                    class="
+                                        validation-icon
+                                        validation-skipped
+                                    "
+                                >
+                                    -
+                                </span>
+
+                            {% elif result.get("success") %}
+
+                                <span
+                                    class="
+                                        validation-icon
+                                        validation-success
+                                    "
+                                >
+                                    ✓
+                                </span>
+
+                            {% else %}
+
+                                <span
+                                    class="
+                                        validation-icon
+                                        validation-failed
+                                    "
+                                >
+                                    ✗
+                                </span>
+
+                            {% endif %}
+
+                            <span>
+                                {{ result.get("message") }}
+                            </span>
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+            <div class="next-step">
+
+                <h2 class="next-step-title">
+                    Start the Visualiser
+                </h2>
+
+                <p class="next-step-description">
+                    Start the Visualiser to initialise ClearPass policy data.
+                </p>
+
+            </div>
+
+            {% if errors %}
+
+                <div
+                    class="error-box"
+                    style="
+                        margin-top: 24px;
+                        padding: 16px 18px;
+                        background: #450a0a;
+                        border: 1px solid #991b1b;
+                        border-radius: 8px;
+                        color: #fecaca;
+                    "
+                >
+
+                    {% for error in errors %}
+
+                        <div>
+                            {{ error }}
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+            <form
+                id="start-form"
+                method="post"
+                action="{{ url_for('start_visualiser') }}"
+            >
+
+                <div class="actions">
+
+                    <button
+                        type="submit"
+                        class="start-button"
+                        id="start-button"
+                    >
+                        Start Visualiser
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+        <div class="footer">
+            ClearPass Policy Visualiser v{{ version }}
+        </div>
+
+    </main>
+
+    <script>
+
+        const startForm =
+            document.getElementById(
+                "start-form"
+            );
+
+        const startButton =
+            document.getElementById(
+                "start-button"
+            );
+
+
+        startForm.addEventListener(
+            "submit",
+            function () {
+
+                startButton.disabled = true;
+
+                startButton.textContent =
+                    "Starting Visualiser...";
+
+            }
+        );
+
+    </script>
+
+</body>
+
+</html>

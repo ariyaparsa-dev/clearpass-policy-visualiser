@@ -1,4 +1,5 @@
 import os
+import secrets
 from datetime import timedelta
 from dotenv import load_dotenv
 
@@ -19,13 +20,16 @@ from cp_object_graph import (
     build_role_mapping_graph
 )
 
-from cp_object_graph import build_enforcement_policy_graph
 
 import time
 import cp_cache
 import logging
 
-load_dotenv()
+
+load_dotenv(
+    ".visualiser.env",
+    override=True
+)
 
 from cp_endpoint import (
     preload_endpoint_data,
@@ -45,6 +49,14 @@ from flask import (
 )
 
 from version import VERSION
+
+from cp_setup import (
+    is_setup_complete,
+    save_setup_configuration,
+    validate_setup_connectivity
+)
+
+
 from cp_graph import build_service_graph
 from cp_services import (
     get_all_services,
@@ -75,16 +87,63 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-logger.info(
-    f"RADIUS_SERVER={os.getenv('RADIUS_SERVER')}"
+radius_server = os.getenv(
+    "RADIUS_SERVER"
 )
+
+if radius_server:
+
+    logger.info(
+        "RADIUS_SERVER=%s",
+        radius_server
+    )
 
 app = Flask(__name__)
 
-app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY")
+FLASK_SECRET_FILE = ".flask_secret"
 
-if not app.config["SECRET_KEY"]:
-    raise RuntimeError("FLASK_SECRET_KEY is not configured.")
+
+def get_flask_secret_key():
+
+    # Use explicitly configured key if available.
+    env_secret = os.getenv("FLASK_SECRET_KEY")
+
+    if env_secret:
+        return env_secret
+
+    # Reuse automatically generated key if it already exists.
+    if os.path.exists(FLASK_SECRET_FILE):
+
+        with open(
+            FLASK_SECRET_FILE,
+            "r",
+            encoding="utf-8"
+        ) as f:
+
+            existing_secret = f.read().strip()
+
+        if existing_secret:
+            return existing_secret
+
+    # First run: generate a new Flask secret.
+    new_secret = secrets.token_hex(32)
+
+    with open(
+        FLASK_SECRET_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        f.write(new_secret)
+
+    logger.info(
+        "Generated new Flask session secret."
+    )
+
+    return new_secret
+
+
+app.config["SECRET_KEY"] = get_flask_secret_key()
 
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
@@ -148,6 +207,476 @@ def log_request():
     logger.info(
         f"{request.method} {request.path}"
     )
+
+@app.before_request
+def require_initial_setup():
+
+    if is_setup_complete():
+        return None
+
+    allowed_endpoints = {
+        "setup",
+        "setup_complete",
+        "start_visualiser",
+        "static"
+    }
+
+    if request.endpoint in allowed_endpoints:
+        return None
+
+    return redirect(
+        url_for("setup")
+    )
+
+@app.route(
+    "/setup",
+    methods=["GET", "POST"]
+)
+def setup():
+
+    if (
+        request.method == "GET"
+        and is_setup_complete()
+    ):
+
+        return redirect(
+            url_for("home")
+        )
+
+    if request.method == "POST":
+
+        endpoint_source = (
+            request.form.get(
+                "endpoint_source",
+                "api"
+            )
+            .strip()
+            .lower()
+        )
+
+        clearpass_verify_ssl = (
+            request.form.get(
+                "clearpass_verify_ssl",
+                "false"
+            )
+            .strip()
+            .lower()
+        )
+
+        config = {
+
+            # ClearPass REST API
+
+            "clearpass_api_url":
+                request.form.get(
+                    "clearpass_api_url",
+                    ""
+                ).strip(),
+
+            "clearpass_client_id":
+                request.form.get(
+                    "clearpass_client_id",
+                    ""
+                ).strip(),
+
+            "clearpass_client_secret":
+                request.form.get(
+                    "clearpass_client_secret",
+                    ""
+                ),
+
+            "clearpass_verify_ssl":
+                clearpass_verify_ssl,
+
+            # RADIUS Authentication
+
+            "radius_server":
+                request.form.get(
+                    "radius_server",
+                    ""
+                ).strip(),
+
+            "radius_port":
+                request.form.get(
+                    "radius_port",
+                    "1812"
+                ).strip(),
+
+            "radius_secret":
+                request.form.get(
+                    "radius_secret",
+                    ""
+                ),
+
+            "nas_identifier":
+                request.form.get(
+                    "nas_identifier",
+                    "clearpass-policy-visualiser"
+                ).strip(),
+
+            # Endpoint Profiling
+
+            "endpoint_source":
+                endpoint_source,
+
+            "sql_fallback":
+                "true",
+
+            # PostgreSQL
+
+            "sql_host":
+                request.form.get(
+                    "sql_host",
+                    ""
+                ).strip(),
+
+            "sql_port":
+                request.form.get(
+                    "sql_port",
+                    "5432"
+                ).strip(),
+
+            "sql_database":
+                request.form.get(
+                    "sql_database",
+                    "tipsdb"
+                ).strip(),
+
+            "sql_username":
+                request.form.get(
+                    "sql_username",
+                    "appexternal"
+                ).strip(),
+
+            "sql_password":
+                request.form.get(
+                    "sql_password",
+                    ""
+                ),
+        }
+
+        clearpass_client_secret_confirm = (
+            request.form.get(
+                "clearpass_client_secret_confirm",
+                ""
+            )
+        )
+
+        radius_secret_confirm = (
+            request.form.get(
+                "radius_secret_confirm",
+                ""
+            )
+        )
+
+        sql_password_confirm = (
+            request.form.get(
+                "sql_password_confirm",
+                ""
+            )
+        )
+
+        errors = []
+
+        # -------------------------------------------------
+        # ClearPass REST API validation
+        # -------------------------------------------------
+
+        if not config["clearpass_api_url"]:
+
+            errors.append(
+                "ClearPass API URL is required."
+            )
+
+        if not config["clearpass_client_id"]:
+
+            errors.append(
+                "ClearPass Client ID is required."
+            )
+
+        if not config["clearpass_client_secret"]:
+
+            errors.append(
+                "ClearPass Client Secret is required."
+            )
+
+        elif not clearpass_client_secret_confirm:
+
+            errors.append(
+                "Confirm ClearPass Client Secret "
+                "is required."
+            )
+
+        elif (
+            config["clearpass_client_secret"]
+            != clearpass_client_secret_confirm
+        ):
+
+            errors.append(
+                "ClearPass Client Secret entries "
+                "do not match."
+            )
+
+        if clearpass_verify_ssl not in {
+            "true",
+            "false"
+        }:
+
+            errors.append(
+                "Invalid ClearPass SSL "
+                "verification setting."
+            )
+
+        # -------------------------------------------------
+        # RADIUS validation
+        # -------------------------------------------------
+
+        if not config["radius_server"]:
+
+            errors.append(
+                "RADIUS Server is required."
+            )
+
+        if not config["radius_secret"]:
+
+            errors.append(
+                "RADIUS Shared Secret is required."
+            )
+
+        elif not radius_secret_confirm:
+
+            errors.append(
+                "Confirm RADIUS Shared Secret "
+                "is required."
+            )
+
+        elif (
+            config["radius_secret"]
+            != radius_secret_confirm
+        ):
+
+            errors.append(
+                "RADIUS Shared Secret entries "
+                "do not match."
+            )
+
+        # -------------------------------------------------
+        # Endpoint profiling validation
+        # -------------------------------------------------
+
+        if endpoint_source not in {
+            "api",
+            "sql"
+        }:
+
+            errors.append(
+                "Invalid endpoint profiling source."
+            )
+
+        # -------------------------------------------------
+        # PostgreSQL validation
+        # -------------------------------------------------
+
+        if endpoint_source == "sql":
+
+            if not config["sql_host"]:
+
+                errors.append(
+                    "PostgreSQL Host is required "
+                    "when PostgreSQL profiling "
+                    "is selected."
+                )
+
+            if not config["sql_password"]:
+
+                errors.append(
+                    "PostgreSQL Password is required "
+                    "when PostgreSQL profiling "
+                    "is selected."
+                )
+
+            elif not sql_password_confirm:
+
+                errors.append(
+                    "Confirm PostgreSQL Password "
+                    "is required."
+                )
+
+            elif (
+                config["sql_password"]
+                != sql_password_confirm
+            ):
+
+                errors.append(
+                    "PostgreSQL Password entries "
+                    "do not match."
+                )
+
+        # -------------------------------------------------
+        # Return form if validation failed
+        # -------------------------------------------------
+
+        if errors:
+
+            return render_template(
+                "setup.html",
+                version=VERSION,
+                errors=errors,
+                form=config
+            )
+
+        # -------------------------------------------------
+        # Validate connectivity
+        # -------------------------------------------------
+
+        validation = (
+            validate_setup_connectivity(
+                config
+            )
+        )
+
+        if not validation["success"]:
+
+            return render_template(
+                "setup.html",
+                version=VERSION,
+                errors=validation["errors"],
+                form=config,
+                validation=validation[
+                    "results"
+                ]
+            )
+
+        # -------------------------------------------------
+        # Save configuration
+        # -------------------------------------------------
+
+        save_setup_configuration(
+            config
+        )
+
+        # Reload generated configuration into
+        # the current process.
+
+        load_dotenv(
+            ".visualiser.env",
+            override=True
+        )
+
+        # Verify that everything required for
+        # application startup now exists.
+
+        if not is_setup_complete():
+
+            return render_template(
+                "setup.html",
+                version=VERSION,
+                errors=[
+                    "Configuration was saved, "
+                    "but setup is still incomplete."
+                ],
+                form=config
+            )
+
+        logger.info(
+            "Initial setup configuration "
+            "loaded successfully."
+        )
+
+        # The configuration changed underneath
+        # any existing login session, so remove
+        # the existing session.
+
+        session.clear()
+
+        logger.info(
+            "Existing user session cleared "
+            "after initial setup."
+        )
+
+        session[
+            "setup_validation"
+        ] = validation[
+            "results"
+        ]
+
+        return redirect(
+            url_for("setup_complete")
+        )
+
+    return render_template(
+        "setup.html",
+        version=VERSION
+    )
+
+@app.route("/setup-complete")
+def setup_complete():
+
+    if not is_setup_complete():
+
+        return redirect(
+            url_for("setup")
+        )
+
+    validation = session.pop(
+        "setup_validation",
+        None
+    )
+
+    return render_template(
+        "setup_complete.html",
+        version=VERSION,
+        validation=validation
+    )
+
+
+@app.route(
+    "/start-visualiser",
+    methods=["POST"]
+)
+def start_visualiser():
+
+    if not is_setup_complete():
+
+        return redirect(
+            url_for("setup")
+        )
+
+    logger.info(
+        "Starting ClearPass Policy Visualiser "
+        "after initial setup..."
+    )
+
+    try:
+
+        initialise_cache()
+
+    except Exception:
+
+        logger.exception(
+            "ClearPass Policy Visualiser "
+            "initialisation failed."
+        )
+
+        return render_template(
+            "setup_complete.html",
+            version=VERSION,
+            errors=[
+                "The Visualiser could not be started. "
+                "Check the ClearPass configuration and "
+                "application log, then try again."
+            ]
+        )
+
+    logger.info(
+        "ClearPass Policy Visualiser started "
+        "successfully."
+    )
+
+    return redirect(
+        url_for("home")
+    )
+
 
 @app.route("/")
 @login_required
@@ -702,7 +1231,16 @@ def object_profile(name):
 
 if __name__ == "__main__":
 
-    initialise_cache()
+    if is_setup_complete(log_missing=True):
+
+        initialise_cache()
+
+    else:
+
+        logger.warning(
+            "Initial setup is incomplete. "
+            "Starting Flask without initialising ClearPass caches."
+        )
 
     app.run(
         host="0.0.0.0",

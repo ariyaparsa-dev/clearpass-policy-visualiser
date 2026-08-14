@@ -25,6 +25,8 @@ test_scripts/
 config.yaml
 cert.pem
 key.pem
+.flask_secret
+.visualiser.env
 
 # Logs
 *.log
