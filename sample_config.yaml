@@ -1,6 +1,0 @@
-clearpass:
-  server: https://clearpass.example.com/api
-  grant_type: client_credentials
-  client_secret: (your secret key))
-  client_id: (your clearpass client_id)
-  verify_ssl: false

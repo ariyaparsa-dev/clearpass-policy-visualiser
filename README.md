@@ -3,7 +3,7 @@
 Visualise, analyse and troubleshoot Aruba ClearPass Services, Role Mapping Policies, Enforcement Policies and Enforcement Profiles.
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.11+-blue" alt="Python">
+  <img src="https://img.shields.io/badge/Python-3.11%2B-blue" alt="Python">
   <img src="https://img.shields.io/badge/Flask-Web_App-green" alt="Flask">
   <img src="https://img.shields.io/badge/Aruba-ClearPass-orange" alt="ClearPass">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
@@ -40,11 +40,14 @@ Additional capabilities include:
 - Endpoint profiling visibility
 - RADIUS-based user authentication
 - Role-based application access
-- Browser-based initial configuration
+- Browser-based Initial Setup
 - Configuration and connectivity validation
+- Optional API-assisted ClearPass configuration
+- Read-only ClearPass change review before provisioning
+- Idempotent creation and validation of required ClearPass objects
 - Optional PostgreSQL endpoint profiling acceleration
 
-The application uses ClearPass REST APIs secured with OAuth 2.0 Client Credentials Grant for policy and configuration data retrieval.
+The application uses ClearPass REST APIs secured with OAuth 2.0 Client Credentials Grant for policy retrieval, analysis and optional configuration.
 
 Users authenticate against ClearPass using RADIUS, with application permissions derived from returned role attributes such as `Aruba-User-Role`.
 
@@ -65,11 +68,27 @@ In the reference environment, PostgreSQL reduced endpoint fingerprint cache load
 Before configuration is saved, the Visualiser validates connectivity to the configured services.
 
 <p align="center">
-  <img src="screenshots/screenshot-1a.jpg" alt="App Startup" width="800">
+  <img src="screenshots/screenshot-1a.jpg" alt="Initial Setup validation" width="800">
 </p>
 
 <p align="center">
-  <img src="screenshots/screenshot-1b.jpg" alt="App Startup" width="800">
+  <img src="screenshots/screenshot-1b.jpg" alt="Initial Setup validation results" width="800">
+</p>
+
+### API-Assisted ClearPass Configuration
+
+Initial Setup can inspect, create and verify the ClearPass objects required for Policy Visualiser.
+
+<p align="center">
+  <img src="screenshots/screenshot-review.jpg" alt="ClearPass change review" width="800">
+</p>
+
+### Setup Complete Provisioning Summary
+
+Setup Complete reports which ClearPass objects were created and which existing objects were validated and left unchanged.
+
+<p align="center">
+  <img src="screenshots/screenshot-complete.jpg" alt="ClearPass provisioning summary" width="1000">
 </p>
 
 ### App Startup
@@ -81,7 +100,7 @@ Before configuration is saved, the Visualiser validates connectivity to the conf
 ### Login Page
 
 <p align="center">
-  <img src="screenshots/screenshot-2.jpg" alt="Login RADIUS auth" width="800">
+  <img src="screenshots/screenshot-2.jpg" alt="RADIUS login" width="800">
 </p>
 
 ### Dashboard
@@ -90,35 +109,27 @@ Before configuration is saved, the Visualiser validates connectivity to the conf
   <img src="screenshots/screenshot-3.jpg" alt="Dashboard" width="800">
 </p>
 
----
-
 ### Service Dependency Graph
 
 <p align="center">
-  <img src="screenshots/screenshot-6.jpg" alt="Service Dependency" width="800">
+  <img src="screenshots/screenshot-6.jpg" alt="Service Dependency Graph" width="800">
 </p>
 
 <p align="center">
-  <img src="screenshots/screenshot-8.jpg" alt="Service Dependency" width="800">
+  <img src="screenshots/screenshot-8.jpg" alt="Service Dependency Analysis" width="800">
 </p>
-
----
 
 ### Repository Search
 
 <p align="center">
-  <img src="screenshots/screenshot-7.jpg" alt="Repository search" width="800">
+  <img src="screenshots/screenshot-7.jpg" alt="Repository Search" width="800">
 </p>
-
----
 
 ### Endpoint Details
 
 <p align="center">
   <img src="screenshots/screenshot-9.jpg" alt="Endpoint Details" width="800">
 </p>
-
----
 
 ### Unused Objects
 
@@ -127,11 +138,12 @@ Before configuration is saved, the Visualiser validates connectivity to the conf
 </p>
 
 ---
+
 ## Features
 
 ### First-Run Initial Setup
 
-ClearPass Policy Visualiser v1.2.0 includes a browser-based Initial Setup workflow.
+ClearPass Policy Visualiser includes a browser-based Initial Setup workflow for configuring, validating and optionally provisioning the ClearPass integration.
 
 When the application is started without an existing Visualiser configuration, Flask starts without initialising the ClearPass caches and redirects the administrator to Initial Setup.
 
@@ -141,15 +153,12 @@ The setup workflow configures:
 - ClearPass REST API SSL certificate verification
 - RADIUS authentication
 - RADIUS shared secret
-- NAS identifier
+- NAS Identifier
 - Endpoint profiling source
 - Optional ClearPass PostgreSQL endpoint profiling
+- Optional API-assisted ClearPass configuration
 
-Sensitive fields require confirmation before validation.
-
-Configuration is validated before being persisted.
-
----
+Sensitive fields require confirmation before validation. Configuration is validated before being persisted.
 
 ### Setup Connectivity Validation
 
@@ -163,17 +172,89 @@ Validation includes:
 
 If the ClearPass server cannot be reached, the REST API authentication test is skipped rather than incorrectly reported as an authentication failure.
 
-Validation results are displayed individually so administrators can distinguish between:
+Validation results are displayed individually so administrators can distinguish between successful, failed and skipped tests. Failed setup attempts remain on the Initial Setup page and do not create a completed Visualiser configuration.
 
-- Successful tests
-- Failed tests
-- Tests that were skipped because a prerequisite failed
+### API-Assisted ClearPass Configuration
 
-Configuration is saved only after required validation succeeds.
+ClearPass Policy Visualiser v1.3.0 adds an optional API-assisted configuration workflow to Initial Setup.
 
-Failed setup attempts remain on the Initial Setup page and do not create a completed Visualiser configuration.
+When **Automatically configure ClearPass for Policy Visualiser** is enabled, the Visualiser can create or validate the complete ClearPass authentication dependency chain:
 
----
+1. `Visualiser-Admin` role
+2. `Visualiser-Helpdesk` role
+3. `visadmin` Local User
+4. `vis-helpdesk` Local User
+5. `Visualiser Admin access` Enforcement Profile
+6. `Visualiser Helpdesk access` Enforcement Profile
+7. `Visualiser Access Policy`
+8. `Policy Visualiser` RADIUS Service
+
+The provisioned Enforcement Profiles return:
+
+```text
+Aruba-User-Role = Admin
+Aruba-User-Role = ReadOnly
+```
+
+The provisioned Enforcement Policy maps:
+
+```text
+Visualiser-Admin
+        ↓
+Visualiser Admin access
+        ↓
+Aruba-User-Role = Admin
+```
+
+and:
+
+```text
+Visualiser-Helpdesk
+        ↓
+Visualiser Helpdesk access
+        ↓
+Aruba-User-Role = ReadOnly
+```
+
+The provisioned RADIUS Service uses:
+
+- `802.1X Wired` service template
+- PAP authentication
+- `[Local User Repository]`
+- `MATCHES_ALL` service rules
+- The configured Visualiser usernames
+- The NAS Identifier entered during Initial Setup
+- `Visualiser Access Policy`
+- Enabled service state
+
+The NAS Identifier is mandatory for assisted configuration. The value configured in the Visualiser must exactly match the NAS Identifier condition in the ClearPass Service.
+
+#### ClearPass Change Review
+
+The read-only **Review ClearPass Changes** operation reports each object as:
+
+- `existing` - the object exists and matches the required configuration
+- `would_create` - the object is missing and will be created
+- `conflict` - the object exists but does not match the required configuration
+
+Review uses an AJAX request, so entered secrets remain in the browser form. No ClearPass configuration changes are made during review.
+
+When automatic configuration is enabled, a successful review is required before **Save and Continue** becomes available. Changing a relevant setup field invalidates the previous review.
+
+#### Safety and Idempotence
+
+The assisted configuration workflow is designed to preserve existing ClearPass configuration.
+
+- Existing matching objects are validated and left unchanged.
+- Existing Local User passwords are not reset.
+- Passwords are required only when a Local User needs to be created.
+- Local User passwords are not saved in `.visualiser.env`.
+- Existing conflicting objects are not replaced or updated automatically.
+- Missing objects are created in dependency order.
+- Created objects are retrieved and verified after creation.
+- Repeated provisioning is idempotent.
+- Setup Complete reports which objects were created and which already existed.
+- API-assisted configuration never deletes existing ClearPass objects.
 
 ### Configuration Management
 
@@ -183,13 +264,7 @@ Visualiser configuration created by Initial Setup is stored locally in:
 .visualiser.env
 ```
 
-The application explicitly loads this file during startup.
-
-The legacy `config.yaml` configuration path has been removed.
-
-The application also no longer performs implicit loading of a conventional `.env` file during startup.
-
-This provides a single Visualiser-managed configuration source:
+The application explicitly loads this file during startup. The legacy `config.yaml` configuration path has been removed, and the application no longer performs implicit loading of a conventional `.env` file.
 
 ```text
 Fresh Installation
@@ -197,11 +272,15 @@ Fresh Installation
         ▼
 Initial Setup
         │
-        ▼
-Configuration Validation
+        ├── Configuration Validation
+        ├── Optional ClearPass Change Review
+        └── Optional API-Assisted Provisioning
         │
         ▼
 .visualiser.env
+        │
+        ▼
+Setup Complete
         │
         ▼
 Start Visualiser
@@ -211,8 +290,6 @@ Login
 ```
 
 The `.visualiser.env` file contains sensitive configuration and is excluded from Git.
-
----
 
 ### Service Visualisation
 
@@ -224,8 +301,6 @@ Visualise complete ClearPass service flows including:
 - Role Mapping Rules
 - Enforcement Policies
 - Enforcement Profiles
-
----
 
 ### Interactive Policy Graph
 
@@ -242,8 +317,6 @@ Interactive graph features include:
 
 Unused Enforcement Policies and Role Mapping Policies can also be opened directly from the Unused Objects view and displayed using the policy graph.
 
----
-
 ### Repository Search
 
 Directly analyse Endpoint Repository conditions referenced by Role Mapping Rules.
@@ -254,8 +327,6 @@ Features include:
 - Repository search
 - Endpoint drill-down navigation
 - Rule condition analysis
-
----
 
 ### Endpoint Profiling
 
@@ -270,29 +341,11 @@ Endpoint profiling can display:
 - MAC Vendor
 - IPv4 Address
 
-Endpoint profiling can use either the ClearPass REST API or, optionally, direct PostgreSQL access for accelerated cache loading.
-
----
+Endpoint profiling can use either the ClearPass REST API or optional direct PostgreSQL access for accelerated cache loading.
 
 ### Enforcement Profile Analysis
 
-Provides detailed visibility into Enforcement Profile configuration and dependencies.
-
-Shows:
-
-- Services using an Enforcement Profile
-- Enforcement Policy relationships
-- Enforcement Profile dependencies
-- Profile ID
-- Profile type
-- Enforcement action
-- Profile description, when configured
-- Enforcement Attributes
-- Attribute type
-- Attribute name
-- Attribute value
-
----
+Provides detailed visibility into Enforcement Profile configuration and dependencies, including profile metadata, enforcement attributes and dependent policies and services.
 
 ### Role Mapping Analysis
 
@@ -303,8 +356,6 @@ Provides visibility into:
 - Repository usage
 - Endpoint matches
 - Assigned roles
-
----
 
 ### Unused Object Analysis
 
@@ -317,33 +368,9 @@ Detects unused:
 - Role Mapping Policies
 - Roles
 
-Role usage is resolved across:
+Role usage is resolved across Role Mapping Policies, assigned roles, default roles, `Tips:Role` conditions, Enforcement Policies and Guest Operator Profiles through the built-in `[Guest Roles]` mapping.
 
-- Role Mapping Policies
-- Assigned roles
-- Default roles
-- `Tips:Role` conditions
-- Enforcement Policies using `Tips:Role` conditions
-- Guest Operator Profiles through the built-in `[Guest Roles]` mapping
-
-ClearPass built-in objects named with square brackets are automatically excluded.
-
-Each unused-object category provides a one-click **Copy All** option for cleanup and review workflows.
-
-Unused Enforcement Profiles are clickable and provide a dedicated detail view showing:
-
-- Profile ID
-- Profile type
-- Enforcement action
-- Description, when configured
-- Enforcement Attributes
-- Attribute type
-- Attribute name
-- Attribute value
-
-Unused Enforcement Policies and Role Mapping Policies are also clickable and can be inspected using their dependency graph.
-
-Enforcement Profile details are retrieved through the existing ClearPass REST API integration and cached for reuse after retrieval.
+ClearPass built-in objects named with square brackets are automatically excluded. Each unused-object category provides a one-click **Copy All** option.
 
 ---
 
@@ -357,15 +384,20 @@ Flask Web Application
     │
     ├── Initial Setup
     │       ├── Configuration Validation
+    │       ├── ClearPass Change Review
+    │       ├── Optional API-Assisted Provisioning
+    │       │       ├── Roles
+    │       │       ├── Local Users
+    │       │       ├── Enforcement Profiles
+    │       │       ├── Enforcement Policy
+    │       │       └── RADIUS Service
     │       └── .visualiser.env
     │
     ├── Authentication
     │       └── ClearPass RADIUS
     │
     ├── Policy Visualisation
-    │
     ├── Dependency Analysis
-    │
     ├── Unused Object Analysis
     │
     ├── ClearPass REST APIs
@@ -376,6 +408,7 @@ Flask Web Application
     │       ├── Enforcement Policies
     │       ├── Enforcement Profiles
     │       ├── Roles
+    │       ├── Local Users
     │       ├── Operator Profiles
     │       └── Endpoint Repository
     │
@@ -384,13 +417,14 @@ Flask Web Application
 ```
 
 ---
-## Authentication and Data Sources
 
-The application uses multiple ClearPass interfaces depending on the type of data being accessed.
+## Authentication and Data Sources
 
 ### ClearPass REST APIs
 
 Service, Role Mapping, Enforcement Policy and Enforcement Profile data is retrieved using the ClearPass REST APIs.
+
+When API-assisted configuration is enabled, the same integration is also used to inspect, create and verify the roles, Local Users, Enforcement Profiles, Enforcement Policy and RADIUS Service required by Policy Visualiser.
 
 API authentication uses OAuth 2.0 Client Credentials Grant:
 
@@ -398,27 +432,29 @@ API authentication uses OAuth 2.0 Client Credentials Grant:
 grant_type=client_credentials
 ```
 
-The API client requires access to:
+The API client requires permissions appropriate to the data retrieval and optional configuration operations used by the Visualiser, including:
 
 - Services
+- Service configuration
 - Authentication Sources
 - Authorisation Sources
 - Role Mapping Policies
 - Enforcement Policies
 - Enforcement Profiles
 - Roles
+- Local Users
 - Guest Operator Profiles
 - Endpoint Repository data
 
----
+The ClearPass API client can be found or created under:
 
-## User Authentication
+```text
+Home › Administration › API Services › API Clients
+```
 
-Users authenticate against ClearPass using RADIUS PAP authentication.
+### User Authentication
 
-The application supports role-based access using RADIUS reply attributes.
-
-Supported role attributes include:
+Users authenticate against ClearPass using RADIUS PAP authentication. The application supports role-based access using reply attributes including:
 
 ```text
 Aruba-User-Role
@@ -426,103 +462,55 @@ Filter-Id
 Class
 ```
 
-Example role mapping:
-
 | Aruba-User-Role | Application Role |
 |-----------------|------------------|
 | Admin | Administrator |
 | ReadOnly | Read Only |
 
-### ClearPass Authentication Prerequisite
+The required RADIUS server, port, shared secret and NAS Identifier are configured through Initial Setup.
 
-Before users can log in to the Visualiser, ClearPass must be configured to authenticate those users through a service available to the Visualiser.
+### PostgreSQL Endpoint Profiling Acceleration
 
-For example, local ClearPass users can be created as:
-
-| User | Returned Role |
-|------|---------------|
-| `vis-admin` | `Admin` |
-| `vis-helpdesk` | `ReadOnly` |
-
-The ClearPass service and enforcement configuration should return the appropriate role to the Visualiser.
-
-For example:
-
-```text
-Aruba-User-Role = Admin
-```
-
-for administrative access, or:
-
-```text
-Aruba-User-Role = ReadOnly
-```
-
-for read-only access.
-
-The required RADIUS server, port, shared secret and NAS identifier are configured through Initial Setup.
-
----
-
-## PostgreSQL Endpoint Profiling Acceleration
-
-Endpoint profiling information can optionally be loaded directly from the ClearPass PostgreSQL database.
-
-The application uses the built-in ClearPass read-only PostgreSQL account:
+Endpoint profiling information can optionally be loaded directly from the ClearPass PostgreSQL database using the built-in read-only account:
 
 ```text
 appexternal
 ```
 
-to query:
+The Visualiser queries:
 
 ```text
 tips_endpoint_profiles
 ```
 
-This provides endpoint profiling information including:
+The `appexternal` password is configured in ClearPass under:
 
-- Hostname
-- Device Category
-- Device Family
-- Device Name
-- Device Type
-- Expanded Device Type
-- MAC Vendor
-- IPv4 Address
+```text
+Administration › Server Manager › Server Configuration
+› Cluster-Wide Parameters › Database
+```
 
-The endpoint profiling source is selected during Initial Setup.
+Use the External PostgreSQL Password configured on the Database tab.
 
-### API Mode
+#### REST API Mode
 
-API mode retrieves endpoint profiling information using the ClearPass REST API.
+REST API mode is the default and does not require direct database connectivity.
 
 ```text
 Endpoint Profiling Source: REST API
 ```
 
-### PostgreSQL Mode
+#### PostgreSQL Mode
 
-PostgreSQL mode loads endpoint profiling data directly from the ClearPass PostgreSQL database.
+PostgreSQL is recommended for faster endpoint profiling when the `appexternal` account is available.
 
 ```text
 Endpoint Profiling Source: PostgreSQL
 ```
 
-When PostgreSQL mode is selected, Initial Setup requests:
+When PostgreSQL mode is selected, Initial Setup requests the host, port, database, username, password and password confirmation. The connection is validated before setup can complete.
 
-- PostgreSQL Host
-- PostgreSQL Port
-- Database
-- Username
-- Password
-- Password confirmation
-
-The PostgreSQL connection is validated before setup can complete.
-
----
-
-## Data Source Summary
+### Data Source Summary
 
 | Function | Data Source | Authentication |
 |----------|-------------|----------------|
@@ -534,6 +522,7 @@ The PostgreSQL connection is validated before setup can complete.
 | Enforcement Policies | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Enforcement Profiles | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Roles | ClearPass REST API | OAuth 2.0 Client Credentials |
+| Local Users | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Guest Operator Profiles | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Endpoint Repository | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Endpoint Profiling Cache | REST API or PostgreSQL | OAuth 2.0 / `appexternal` |
@@ -557,6 +546,7 @@ clearpass-policy-visualiser
 ├── cp_graph.py
 ├── cp_health.py
 ├── cp_object_graph.py
+├── cp_provision.py
 ├── cp_role_mapping.py
 ├── cp_services.py
 ├── cp_setup.py
@@ -591,8 +581,6 @@ clearpass-policy-visualiser
 
 ## Python Dependencies
 
-The Visualiser uses the following direct Python dependencies:
-
 ```text
 Flask>=3.0.3
 Flask-Login>=0.6.3
@@ -602,37 +590,29 @@ psycopg[binary]>=3.2.0
 pyclearpass>=1.0.8
 ```
 
-PyYAML is no longer a direct dependency because the legacy YAML configuration path has been removed.
+PyYAML is not a direct production dependency because the legacy YAML configuration path has been removed.
 
 ---
+
 ## Requirements
 
 - Python 3.11 or later
 - Aruba ClearPass Policy Manager
 - ClearPass REST API Client using OAuth 2.0 Client Credentials Grant
+- A ClearPass API Client with sufficient permissions to inspect and optionally create the required Policy Visualiser objects
 - Network connectivity from the Visualiser host to ClearPass
 - RADIUS configuration in ClearPass for Visualiser user authentication
-- Appropriate ClearPass service and enforcement configuration to return Visualiser user roles
-- PostgreSQL access using the built-in `appexternal` account when PostgreSQL endpoint profiling is selected
+- PostgreSQL access using the built-in `appexternal` account only when PostgreSQL endpoint profiling is selected
 
 ---
 
 ## Installation
 
-Clone the repository:
-
 ```bash
 git clone <REPOSITORY-URL>
 cd clearpass-policy-visualiser
-```
-
-Create a virtual environment:
-
-```bash
 python -m venv venv
 ```
-
-Activate the environment.
 
 ### Windows
 
@@ -646,31 +626,20 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
-Install dependencies:
+Install dependencies and start the application:
 
 ```bash
 python -m pip install -r requirements.txt
-```
-
-Start the Visualiser:
-
-```bash
 python app.py
 ```
 
-On a new installation, the application will start without initialising the ClearPass caches and will present the Initial Setup page.
-
-Open the address displayed by Flask in a browser and complete Initial Setup.
+On a new installation, the application starts without initialising ClearPass caches and presents the Initial Setup page.
 
 ---
 
 ## Initial Setup
 
-The Initial Setup wizard replaces the previous manual `.env` configuration process.
-
-There is no requirement to copy or manually edit an `.env` or `config.yaml` file.
-
-Initial Setup is divided into the following configuration areas.
+The Initial Setup wizard replaces the previous manual `.env` or `config.yaml` process.
 
 ### RADIUS Authentication
 
@@ -682,10 +651,6 @@ Configure:
 - Confirm RADIUS Shared Secret
 - NAS Identifier
 
-The page also describes the ClearPass-side user and role configuration required for Visualiser authentication.
-
----
-
 ### ClearPass REST API
 
 Configure:
@@ -696,88 +661,56 @@ Configure:
 - Confirm Client Secret
 - SSL certificate verification preference
 
-The REST API uses OAuth 2.0 Client Credentials Grant.
+The API client can be found or created under:
 
----
+```text
+Home › Administration › API Services › API Clients
+```
 
 ### Endpoint Profiling
 
-Select the source used for endpoint profiling:
+Select:
 
 - REST API
-- PostgreSQL
+- PostgreSQL - recommended for faster profiling
 
-When PostgreSQL is selected, configure:
+REST API is the default and does not require direct database connectivity. When PostgreSQL is selected, configure the PostgreSQL host, port, database, username and password.
 
-- PostgreSQL Host
-- PostgreSQL Port
-- Database
-- Username
-- Password
-- Confirm Password
-
----
-
-## Initial Setup Validation
-
-After the form is submitted, the Visualiser validates the configuration before saving it.
-
-A successful validation can include:
+### Assisted Configuration Flow
 
 ```text
-ClearPass Server       Successful
-ClearPass REST API     Successful
-PostgreSQL             Successful
-```
-
-If a prerequisite test fails, dependent tests can be skipped.
-
-For example:
-
-```text
-ClearPass Server       Failed
-ClearPass REST API     Skipped
-PostgreSQL             Tested independently
-```
-
-If validation fails:
-
-```text
-Initial Setup
-      │
-      ▼
-Display Validation Results
-      │
-      ▼
-Remain on Setup Page
-      │
-      ▼
-Configuration Not Saved
-```
-
-If validation succeeds:
-
-```text
-Initial Setup
-      │
-      ▼
-Validate Connectivity
-      │
-      ▼
+Enable Automatic ClearPass Configuration
+        │
+        ▼
+Enter Visualiser Usernames and Required Passwords
+        │
+        ▼
+Review ClearPass Changes
+        │
+        ├── Existing
+        ├── Would Create
+        └── Conflict
+        │
+        ▼
+Save and Continue
+        │
+        ▼
+Run Fresh Server-Side Validation
+        │
+        ▼
+Create Missing ClearPass Objects
+        │
+        ▼
+Verify Provisioned Objects
+        │
+        ▼
 Save .visualiser.env
-      │
-      ▼
+        │
+        ▼
 Setup Complete
-      │
-      ▼
-Start Visualiser
-      │
-      ▼
-Initialise Caches
-      │
-      ▼
-Login
 ```
+
+If automatic configuration is not selected, Initial Setup follows the manual ClearPass configuration path and does not create or modify ClearPass objects.
 
 ---
 
@@ -785,35 +718,49 @@ Login
 
 ### `.visualiser.env`
 
-Initial Setup creates:
-
-```text
-.visualiser.env
-```
-
-This contains the active Visualiser configuration.
-
-It may contain sensitive information including:
+Initial Setup creates `.visualiser.env`, which contains active Visualiser configuration and may include:
 
 - ClearPass API Client Secret
 - RADIUS Shared Secret
 - PostgreSQL password
 
-Do not commit this file to source control.
+Do not commit this file to source control. The supplied `.gitignore` excludes it.
 
-The supplied `.gitignore` excludes `.visualiser.env`.
+ClearPass Local User passwords entered for API-assisted configuration are used only when creating missing users. These passwords are not written to:
 
----
+- `.visualiser.env`
+- the Flask session
+- rendered HTML
+- provisioning result data
+- application logs
+
+Existing matching Local Users are preserved and their passwords are not reset.
 
 ### `.flask_secret`
 
-If `FLASK_SECRET_KEY` is not explicitly configured, the application generates a persistent Flask session secret and stores it in:
+If `FLASK_SECRET_KEY` is not explicitly configured, the application generates a persistent Flask session secret and stores it in `.flask_secret`. This file is excluded from Git.
+
+### Correcting Saved Credentials
+
+To correct connection credentials after Initial Setup:
+
+1. Stop Policy Visualiser.
+2. Edit `.visualiser.env`.
+3. Update the affected value.
+4. Ensure the value matches the corresponding ClearPass configuration.
+5. Restart Policy Visualiser.
+
+Common values include:
 
 ```text
-.flask_secret
+CLEARPASS_CLIENT_SECRET
+RADIUS_SECRET
+SQL_PASSWORD
 ```
 
-This file is also excluded from Git.
+A restart is required because the Visualiser loads `.visualiser.env` during application startup.
+
+If the RADIUS secret is changed, the value must match the shared secret configured for the Visualiser RADIUS client in ClearPass. If the API Client Secret is changed, the value must match the corresponding ClearPass API Client.
 
 ---
 
@@ -825,8 +772,6 @@ For an existing configured installation:
 python app.py
 ```
 
-The Visualiser loads `.visualiser.env` and initialises the required caches.
-
 Startup includes:
 
 - ClearPass service discovery
@@ -837,32 +782,17 @@ Startup includes:
 - Role Mapping reference cache
 - Unused Object cache
 
-After startup, users authenticate through the login page using ClearPass RADIUS.
+The Setup Complete page displays an animated loading overlay while the initial cache is being built.
 
 ---
 
 ## Refreshing Cached Data
 
-The dashboard provides a cache refresh operation which rebuilds Visualiser data from ClearPass, including:
-
-- Health status
-- Services
-- Roles
-- Enforcement Profile references
-- Role Mapping references
-- Unused Object analysis
-
-This allows the Visualiser to reflect ClearPass configuration changes without requiring a complete application reinstall.
+The dashboard provides a cache refresh operation which rebuilds Visualiser data from ClearPass, including health, services, roles, Enforcement Profile references, Role Mapping references and Unused Object analysis.
 
 ---
 
 ## PostgreSQL Endpoint Profiling Performance
-
-For large endpoint repositories, endpoint profiling data can be loaded directly from the ClearPass PostgreSQL database using:
-
-```text
-tips_endpoint_profiles
-```
 
 ### Reference Results
 
@@ -877,43 +807,19 @@ Reference environment:
 Endpoint Profiles: 376
 ```
 
-Observed improvement:
-
-```text
-~74s → ~0.08s
-```
-
-These figures are observations from the reference environment and should not be interpreted as guaranteed performance in other ClearPass deployments.
+These figures are observations from the reference environment and are not guaranteed in other deployments.
 
 ---
 
 ## Typical Use Cases
 
-### Troubleshooting Authentication Failures
-
-Visualise the complete policy flow from service selection through role mapping and enforcement.
-
-### Change Impact Analysis
-
-Identify which services, policies and enforcement profiles may be affected before making configuration changes.
-
-### ClearPass Documentation
-
-Provide a graphical representation of ClearPass policy relationships for operational documentation.
-
-### Configuration Reviews
-
-Quickly understand service dependencies and enforcement profile usage without manually navigating through multiple areas of ClearPass.
-
-### Configuration Cleanup
-
-Identify unused Enforcement Profiles, Enforcement Policies, Role Mapping Policies and Roles that are candidates for review.
-
-Copy unused object lists by category and drill into individual objects to inspect their configuration and relationships before making changes.
-
-### Operational Troubleshooting
-
-Search endpoint repositories, analyse rule conditions and verify profile assignments.
+- Troubleshooting authentication failures
+- Change impact analysis
+- ClearPass documentation
+- Configuration reviews
+- Configuration cleanup
+- Endpoint repository and profiling analysis
+- Operational knowledge transfer
 
 ---
 
@@ -921,22 +827,8 @@ Search endpoint repositories, analyse rule conditions and verify profile assignm
 
 Planned enhancements include:
 
-### ClearPass Assisted Setup
-
-Future setup improvements are planned to optionally automate selected ClearPass-side prerequisites using the ClearPass REST API.
-
-The proposed workflow will remain opt-in and is intended to build on the v1.2.0 Initial Setup framework.
-
-Potential phases include:
-
-1. Optional provisioning of Visualiser local users
-2. Optional provisioning of Visualiser role/enforcement configuration
-3. Optional provisioning of the Visualiser RADIUS service
-
-Existing ClearPass objects should be detected and validated rather than blindly duplicated or overwritten.
-
-### Additional Enhancements
-
+- Administrator-only connection configuration page
+- Secure validation and update of saved ClearPass, RADIUS and PostgreSQL connection settings
 - Additional unused-object drill-down views
 - Enhanced role-based authorisation controls
 - Impact analysis reporting
@@ -949,86 +841,79 @@ Existing ClearPass objects should be detected and validated rather than blindly 
 
 ## Changelog
 
+### v1.3.0
+
+#### API-Assisted ClearPass Configuration
+
+- Added optional automatic ClearPass configuration during Initial Setup
+- Added creation and validation of `Visualiser-Admin` and `Visualiser-Helpdesk` roles
+- Added creation and validation of Administrator and Helpdesk Local Users
+- Added creation and validation of Admin and ReadOnly Enforcement Profiles
+- Added creation and validation of `Visualiser Access Policy`
+- Added creation and validation of the enabled `Policy Visualiser` RADIUS Service
+- Added mandatory NAS Identifier validation
+- Added PAP and Local User Repository configuration
+- Added exact mapping of Visualiser roles to `Aruba-User-Role` values
+
+#### ClearPass Change Review
+
+- Added read-only **Review ClearPass Changes** workflow
+- Added `existing`, `would_create` and `conflict` states
+- Added eight-object provisioning preview
+- Added AJAX preview without clearing entered secrets
+- Added automatic scrolling to results and validation errors
+- Added password validation for missing Local Users
+- Added review invalidation when relevant values change
+- Added successful-review requirement before Save and Continue
+
+#### Provisioning Safety
+
+- Added idempotent provisioning
+- Added preservation of existing matching objects and Local User passwords
+- Added conflict detection without automatic replacement
+- Added read-after-create verification
+- Added dependency-order provisioning
+- Prevented Local User passwords from being written to `.visualiser.env`
+- Added mixed existing and newly created object support
+
+#### Initial Setup User Interface
+
+- Added automatic ClearPass configuration controls
+- Added two-column provisioning preview
+- Added clear next-step guidance after review
+- Added API Client and `appexternal` location guidance
+- Added PostgreSQL recommendation for faster profiling
+- Added Setup Complete provisioning summary and object counts
+- Added responsive four-column provisioning results
+- Added animated Start Visualiser loading overlay
+- Added reduced-motion-compatible loading animation
+
+#### Testing
+
+- Validated fresh, mixed and existing ClearPass configurations
+- Validated repeated idempotent provisioning
+- Validated Administrator and Helpdesk RADIUS authentication
+- Validated `Admin` and `ReadOnly` application role assignment
+
 ### v1.2.0
 
-#### Initial Setup
-
-- Added browser-based first-run Initial Setup workflow
-- Added ClearPass REST API configuration
-- Added RADIUS authentication configuration
-- Added endpoint profiling source selection
-- Added optional PostgreSQL endpoint profiling configuration
-- Added confirmation fields for sensitive credentials
-- Added dedicated Setup Complete workflow
-- Added Start Visualiser operation after successful setup
-
-#### Configuration Validation
-
-- Added ClearPass server connectivity validation
-- Added ClearPass REST API authentication validation
-- Added PostgreSQL connectivity validation when PostgreSQL profiling is selected
-- Added independent validation result reporting
-- Added skipped REST API status when the ClearPass server cannot be reached
-- Prevented failed setup validation from creating a completed configuration
-
-#### Configuration Management
-
-- Added `.visualiser.env` as the Visualiser-managed runtime configuration
-- Added explicit `.visualiser.env` loading at application startup
-- Added configuration reload after successful Initial Setup
-- Added clearing of existing user sessions after initial configuration changes
-- Removed implicit `.env` loading
-- Removed the legacy `config.yaml` runtime configuration path
-- Removed the direct PyYAML dependency
-
-#### Authentication
-
-- Added Initial Setup guidance for ClearPass RADIUS authentication prerequisites
-- Documented example `Admin` and `ReadOnly` Visualiser roles
-- Documented example `vis-admin` and `vis-helpdesk` ClearPass users
-- Documented `Aruba-User-Role` role mapping requirements
-
-#### Health and Startup
-
-- Migrated ClearPass health checking away from `config.yaml`
-- Added clean startup behaviour when Initial Setup is incomplete
-- Added Visualiser cache initialisation after successful setup
-- Improved setup and startup logging
-
-#### User Interface
-
-- Standardised ClearPass Policy Visualiser branding across object analysis views
-- Standardised Back navigation placement on the top-right
-- Added consistent headers for Enforcement Policy and Role Mapping Policy detail views
-- Improved responsive behaviour for object detail page headers
-
----
+- Added browser-based Initial Setup and Setup Complete workflow
+- Added ClearPass, RADIUS and optional PostgreSQL configuration
+- Added connectivity validation and secure `.visualiser.env` management
+- Removed legacy `config.yaml` and implicit `.env` loading
+- Added secure Flask session secret generation
 
 ### v1.1.1
 
-- Added clickable unused Enforcement Profiles
-- Added dedicated Unused Enforcement Profile detail view
-- Added Enforcement Profile metadata display including ID, type, action and description
-- Added detailed Enforcement Attribute visibility including attribute type, name and value
-- Added Enforcement Profile caching for detail lookups
-- Improved Unused Enforcement Profile layout with Profile Information and Enforcement Attributes displayed side by side
-- Standardised ClearPass Policy Visualiser headers across analysis views
-- Standardised page-level Back navigation on the top-right
-- Updated Service Visualisation navigation and header layout for UI consistency
-
----
+- Added clickable unused Enforcement Profiles and dedicated detail view
+- Added Enforcement Profile metadata and Enforcement Attribute visibility
+- Improved layout and navigation consistency
 
 ### v1.1.0
 
-- Added Unused Object analysis for Enforcement Profiles, Enforcement Policies, Role Mapping Policies and Roles
-- Added full role dependency analysis including Guest Operator Profiles through the `[Guest Roles]` mapping
-- Added correct handling of default Enforcement Profiles during dependency analysis
-- Added clickable dashboard card and dedicated Unused Objects page
-- Added Copy All per category for cleanup workflows
-- Added startup and refresh caching for Unused Object results
-- Reduced log verbosity
-
----
+- Added Unused Object analysis for profiles, policies, Role Mapping Policies and roles
+- Added dependency analysis and Copy All workflows
+- Added startup and refresh caching
 
 ### v1.0.0
 
@@ -1040,7 +925,7 @@ Existing ClearPass objects should be detected and validated rather than blindly 
 
 The Visualiser handles credentials used to communicate with ClearPass and, when enabled, PostgreSQL.
 
-Files containing local secrets are excluded from Git by the supplied `.gitignore`, including:
+Files containing local secrets are excluded from Git, including:
 
 ```text
 .visualiser.env
@@ -1052,12 +937,16 @@ key.pem
 Administrators should:
 
 - Protect access to the Visualiser host
-- Use appropriately scoped ClearPass API credentials
-- Protect the RADIUS shared secret
-- Protect PostgreSQL credentials
-- Use appropriate TLS and certificate verification settings for the deployment
-- Review ClearPass configuration before making production changes
-- Never commit `.visualiser.env` or `.flask_secret` to source control
+- Use an appropriately scoped ClearPass API Client
+- Protect RADIUS and PostgreSQL credentials
+- Use appropriate TLS and certificate verification settings
+- Use the read-only ClearPass change review before assisted configuration
+- Confirm any object reported as a conflict
+- Rotate credentials according to local security policy
+- Restart the Visualiser after manually changing `.visualiser.env`
+- Never commit `.visualiser.env` or `.flask_secret`
+
+API-assisted configuration never deletes existing ClearPass objects and never automatically replaces conflicting objects.
 
 ---
 
@@ -1069,13 +958,9 @@ MIT License
 
 ## Disclaimer
 
-This project is an independent community tool.
+This project is an independent community tool. It is not affiliated with, endorsed by, or supported by Hewlett Packard Enterprise (HPE).
 
-It is not affiliated with, endorsed by, or supported by Hewlett Packard Enterprise (HPE).
-
-Always validate configuration changes before applying them to production environments.
-
-Unused Object results should be treated as analysis and review candidates. Confirm that an object is no longer required before removing it from ClearPass.
+Always validate configuration changes before applying them to production environments. Unused Object results should be treated as analysis and review candidates.
 
 ---
 
@@ -1089,6 +974,6 @@ Unused Object results should be treated as analysis and review candidates. Confi
 
 ---
 
-**ClearPass Policy Visualiser v1.2.0**
+**ClearPass Policy Visualiser v1.3.0**
 
 Visualise. Analyse. Troubleshoot.

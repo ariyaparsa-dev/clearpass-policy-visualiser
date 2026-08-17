@@ -2,20 +2,17 @@
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
-
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1.0"
     >
 
     <title>
-        Setup Complete - ClearPass Policy Visualizer
+        Setup Complete - ClearPass Policy Visualiser
     </title>
 
     <style>
-
         :root {
             --hpe-green: #01A982;
         }
@@ -27,10 +24,7 @@
         body {
             margin: 0;
             min-height: 100vh;
-            font-family:
-                Arial,
-                Helvetica,
-                sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             background: #0f172a;
             color: #e2e8f0;
         }
@@ -55,14 +49,12 @@
         }
 
         .container {
-            width: min(
-                720px,
-                calc(100% - 40px)
-            );
-            margin: 80px auto;
+            width: min(1100px, calc(100% - 40px));
+            margin: 48px auto;
         }
 
         .card {
+            width: 100%;
             padding: 32px;
             background: #1e293b;
             border: 1px solid #334155;
@@ -88,59 +80,6 @@
             margin: 0;
             color: #94a3b8;
             line-height: 1.6;
-        }
-
-        .next-step {
-            margin-top: 28px;
-            padding-top: 24px;
-            border-top: 1px solid #334155;
-        }
-
-        .next-step-title {
-            margin: 0 0 8px;
-            color: #ffffff;
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .next-step-description {
-            margin: 0;
-            color: #94a3b8;
-            line-height: 1.6;
-        }
-
-        .actions {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 28px;
-        }
-
-        .start-button {
-            border: 0;
-            border-radius: 6px;
-            padding: 12px 22px;
-            background: #22c55e;
-            color: #052e16;
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .start-button:hover {
-            background: #16a34a;
-        }
-
-        .start-button:disabled {
-            background: #475569;
-            color: #cbd5e1;
-            cursor: wait;
-        }
-
-        .footer {
-            margin-top: 36px;
-            text-align: center;
-            color: #64748b;
-            font-size: 13px;
         }
 
         .validation-box {
@@ -190,14 +129,376 @@
             color: #94a3b8;
         }
 
-        @media (max-width: 700px) {
+        .provisioning-result {
+            width: 100%;
+            margin-top: 24px;
+            padding: 22px;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 10px;
+        }
 
+        .provisioning-result h2 {
+            margin: 0 0 18px;
+            color: #ffffff;
+            font-size: 20px;
+        }
+
+        .provisioning-summary {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 18px;
+            padding: 16px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #cbd5e1;
+        }
+
+        .provisioning-summary strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #ffffff;
+        }
+
+        .summary-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .summary-success {
+            color: #22c55e;
+        }
+
+        .summary-failed {
+            color: #ef4444;
+        }
+
+        .summary-message {
+            color: #94a3b8;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .provisioning-items-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .provisioning-result-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            min-width: 0;
+            min-height: 104px;
+            padding: 13px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+        }
+
+        .provisioning-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .provisioning-created .provisioning-status {
+            color: #38bdf8;
+        }
+
+        .provisioning-existing .provisioning-status {
+            color: #22c55e;
+        }
+
+        .provisioning-conflict .provisioning-status,
+        .provisioning-failed .provisioning-status {
+            color: #ef4444;
+        }
+
+        .provisioning-item-content {
+            min-width: 0;
+        }
+
+        .provisioning-item-content strong {
+            display: block;
+            margin-bottom: 3px;
+            color: #ffffff;
+            font-size: 14px;
+            line-height: 1.3;
+            overflow-wrap: anywhere;
+        }
+
+        .provisioning-object-type {
+            margin-bottom: 5px;
+            color: #64748b;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .provisioning-item-message {
+            color: #94a3b8;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .next-step {
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid #334155;
+        }
+
+        .next-step-title {
+            margin: 0 0 8px;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .next-step-description {
+            margin: 0;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .error-box {
+            margin-top: 24px;
+            padding: 16px 18px;
+            background: #450a0a;
+            border: 1px solid #991b1b;
+            border-radius: 8px;
+            color: #fecaca;
+        }
+
+        .error-box div + div {
+            margin-top: 6px;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 28px;
+        }
+
+        .start-button {
+            border: 0;
+            border-radius: 6px;
+            padding: 12px 22px;
+            background: #22c55e;
+            color: #052e16;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .start-button:hover {
+            background: #16a34a;
+        }
+
+        .start-button:disabled {
+            background: #475569;
+            color: #cbd5e1;
+            cursor: wait;
+        }
+
+        .footer {
+            margin-top: 36px;
+            text-align: center;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(4px);
+        }
+
+        .loading-overlay.visible {
+            display: flex;
+        }
+
+        .loading-panel {
+            width: min(
+                440px,
+                100%
+            );
+            padding: 32px;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 12px;
+            box-shadow:
+                0 24px 60px
+                rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+
+        .loading-panel h2 {
+            margin: 22px 0 10px;
+            color: #ffffff;
+            font-size: 22px;
+        }
+
+        .loading-panel p {
+            margin: 0;
+            color: #cbd5e1;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .loading-detail {
+            margin-top: 12px;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .loading-bars {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            height: 48px;
+        }
+
+        .loading-bars span {
+            display: block;
+            width: 4px;
+            height: 18px;
+            background: var(--hpe-green);
+            border-radius: 2px;
+            animation:
+                loading-bar-pulse
+                1.1s
+                ease-in-out
+                infinite;
+        }
+
+        .loading-bars span:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .loading-bars span:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .loading-bars span:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-bars span:nth-child(4) {
+            animation-delay: 0.3s;
+        }
+
+        .loading-bars span:nth-child(5) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes loading-bar-pulse {
+
+            0%,
+            100% {
+                height: 16px;
+                opacity: 0.45;
+            }
+
+            50% {
+                height: 44px;
+                opacity: 1;
+            }
+
+        }
+
+        @media (
+            prefers-reduced-motion: reduce
+        ) {
+
+            .loading-bars span {
+                height: 28px;
+                animation:
+                    loading-bar-fade
+                    1.2s
+                    ease-in-out
+                    infinite;
+            }
+
+            .loading-bars span:nth-child(1) {
+                animation-delay: 0s;
+            }
+
+            .loading-bars span:nth-child(2) {
+                animation-delay: 0.12s;
+            }
+
+            .loading-bars span:nth-child(3) {
+                animation-delay: 0.24s;
+            }
+
+            .loading-bars span:nth-child(4) {
+                animation-delay: 0.36s;
+            }
+
+            .loading-bars span:nth-child(5) {
+                animation-delay: 0.48s;
+            }
+
+        }     
+
+        @keyframes loading-bar-fade {
+
+            0%,
+            100% {
+                opacity: 0.35;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+        }        
+
+        @media (max-width: 1000px) {
+            .provisioning-items-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 700px) {
             .container {
-                margin-top: 40px;
+                width: calc(100% - 24px);
+                margin-top: 24px;
             }
 
             .card {
-                padding: 24px;
+                padding: 20px;
+            }
+
+            .provisioning-result {
+                padding: 16px;
+            }
+
+            .provisioning-items-grid {
+                grid-template-columns: 1fr;
             }
 
             .actions {
@@ -207,33 +508,20 @@
             .start-button {
                 width: 100%;
             }
-
         }
-
     </style>
-
 </head>
 
 <body>
-
     <nav class="navbar">
-
         <span class="navbar-brand">
-
-            <span class="brand-green">
-                ClearPass
-            </span>
-
+            <span class="brand-green">ClearPass</span>
             Policy Visualiser
-
         </span>
-
     </nav>
 
     <main class="container">
-
         <div class="card">
-
             <div class="success">
                 Configuration validated and saved successfully.
             </div>
@@ -243,72 +531,155 @@
             </h1>
 
             <p class="description">
-                The ClearPass Policy Visualiser has
-                loaded the new configuration
-                successfully.
+                The ClearPass Policy Visualiser has loaded the new
+                configuration successfully.
             </p>
 
             {% if validation %}
-
                 <div class="validation-box">
-
                     <h2 class="validation-title">
                         Configuration Validation
                     </h2>
 
                     {% for name, result in validation.items() %}
-
                         <div class="validation-item">
-
                             {% if result.get("skipped") %}
-
                                 <span
-                                    class="
-                                        validation-icon
-                                        validation-skipped
-                                    "
+                                    class="validation-icon validation-skipped"
                                 >
                                     -
                                 </span>
-
                             {% elif result.get("success") %}
-
                                 <span
-                                    class="
-                                        validation-icon
-                                        validation-success
-                                    "
+                                    class="validation-icon validation-success"
                                 >
                                     ✓
                                 </span>
-
                             {% else %}
-
                                 <span
-                                    class="
-                                        validation-icon
-                                        validation-failed
-                                    "
+                                    class="validation-icon validation-failed"
                                 >
                                     ✗
                                 </span>
-
                             {% endif %}
 
-                            <span>
-                                {{ result.get("message") }}
+                            <span>{{ result.get("message") }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% if provisioning %}
+                <div class="provisioning-result">
+                    <h2>ClearPass API Provisioning</h2>
+
+                    {% set created_count =
+                        provisioning["items"]
+                        | selectattr("status", "equalto", "created")
+                        | list
+                        | length
+                    %}
+
+                    {% set existing_count =
+                        provisioning["items"]
+                        | selectattr("status", "equalto", "existing")
+                        | list
+                        | length
+                    %}
+
+                    <div class="provisioning-summary">
+                        {% if provisioning["success"] %}
+                            <span class="summary-icon summary-success">
+                                ✓
                             </span>
 
-                        </div>
+                            <div>
+                                <strong>
+                                    ClearPass provisioning completed
+                                    successfully.
+                                </strong>
 
-                    {% endfor %}
+                                <div class="summary-message">
+                                    {% if created_count > 0 %}
+                                        {{ created_count }}
+                                        ClearPass
+                                        {% if created_count == 1 %}
+                                            object was
+                                        {% else %}
+                                            objects were
+                                        {% endif %}
+                                        created through the REST API.
+                                    {% else %}
+                                        No ClearPass objects were created
+                                        because the existing configuration
+                                        already matched the required Visualiser
+                                        configuration.
+                                    {% endif %}
 
+                                    {% if existing_count > 0 %}
+                                        {{ existing_count }}
+                                        existing
+                                        {% if existing_count == 1 %}
+                                            object was
+                                        {% else %}
+                                            objects were
+                                        {% endif %}
+                                        validated and left unchanged.
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <span class="summary-icon summary-failed">
+                                ✗
+                            </span>
+
+                            <div>
+                                <strong>
+                                    ClearPass provisioning did not complete.
+                                </strong>
+
+                                {% if provisioning.get("error") %}
+                                    <div class="summary-message">
+                                        {{ provisioning.get("error") }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="provisioning-items-grid">
+                        {% for item in provisioning["items"] %}
+                            <div
+                                class="provisioning-result-item provisioning-{{ item.status }}"
+                            >
+                                <span class="provisioning-status">
+                                    {% if item.status == "created" %}
+                                        +
+                                    {% elif item.status == "existing" %}
+                                        ✓
+                                    {% else %}
+                                        !
+                                    {% endif %}
+                                </span>
+
+                                <div class="provisioning-item-content">
+                                    <strong>{{ item.name }}</strong>
+
+                                    <div class="provisioning-object-type">
+                                        {{ item.object_type | replace("_", " ") | title }}
+                                    </div>
+
+                                    <div class="provisioning-item-message">
+                                        {{ item.message }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
                 </div>
-
             {% endif %}
 
             <div class="next-step">
-
                 <h2 class="next-step-title">
                     Start the Visualiser
                 </h2>
@@ -316,33 +687,14 @@
                 <p class="next-step-description">
                     Start the Visualiser to initialise ClearPass policy data.
                 </p>
-
             </div>
 
             {% if errors %}
-
-                <div
-                    class="error-box"
-                    style="
-                        margin-top: 24px;
-                        padding: 16px 18px;
-                        background: #450a0a;
-                        border: 1px solid #991b1b;
-                        border-radius: 8px;
-                        color: #fecaca;
-                    "
-                >
-
+                <div class="error-box">
                     {% for error in errors %}
-
-                        <div>
-                            {{ error }}
-                        </div>
-
+                        <div>{{ error }}</div>
                     {% endfor %}
-
                 </div>
-
             {% endif %}
 
             <form
@@ -350,9 +702,7 @@
                 method="post"
                 action="{{ url_for('start_visualiser') }}"
             >
-
                 <div class="actions">
-
                     <button
                         type="submit"
                         class="start-button"
@@ -360,18 +710,55 @@
                     >
                         Start Visualiser
                     </button>
-
                 </div>
-
             </form>
-
         </div>
 
         <div class="footer">
             ClearPass Policy Visualiser v{{ version }}
         </div>
-
     </main>
+
+    <div
+        id="loading-overlay"
+        class="loading-overlay"
+        role="status"
+        aria-live="polite"
+        aria-hidden="true"
+    >
+
+        <div class="loading-panel">
+
+            <div
+                class="loading-bars"
+                aria-hidden="true"
+            >
+
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+
+            </div>
+
+            <h2>
+                Starting Policy Visualiser
+            </h2>
+
+            <p>
+                Loading ClearPass services, policies,
+                roles, profiles and endpoint data.
+            </p>
+
+            <div class="loading-detail">
+                Please keep this page open.
+            </div>
+
+        </div>
+
+    </div>
+
 
     <script>
 
@@ -385,18 +772,51 @@
                 "start-button"
             );
 
+        const loadingOverlay =
+            document.getElementById(
+                "loading-overlay"
+            );
 
-        startForm.addEventListener(
-            "submit",
-            function () {
 
-                startButton.disabled = true;
+        if (
+            startForm
+            &&
+            startButton
+            &&
+            loadingOverlay
+        ) {
 
-                startButton.textContent =
-                    "Starting Visualiser...";
+            startForm.addEventListener(
+                "submit",
+                function () {
 
-            }
-        );
+                    startButton.disabled =
+                        true;
+
+                    startButton.textContent =
+                        "Starting Visualiser...";
+
+                    loadingOverlay.classList.add(
+                        "visible"
+                    );
+
+                    loadingOverlay.setAttribute(
+                        "aria-hidden",
+                        "false"
+                    );
+
+                    /*
+                     * Prevent the page from scrolling
+                     * behind the loading overlay.
+                     */
+
+                    document.body.style.overflow =
+                        "hidden";
+
+                }
+            );
+
+        }
 
     </script>
 
