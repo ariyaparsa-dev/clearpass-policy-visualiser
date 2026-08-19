@@ -312,8 +312,7 @@ Interactive graph features include:
 - Reset layout
 - Node search
 - Previous / Next search navigation
-- PNG export
-- JPG export
+- PNG, JPG and SVG export
 
 Unused Enforcement Policies and Role Mapping Policies can also be opened directly from the Unused Objects view and displayed using the policy graph.
 
@@ -831,13 +830,34 @@ Planned enhancements include:
 - Secure validation and update of saved ClearPass, RADIUS and PostgreSQL connection settings
 - Enhanced role-based authorisation controls
 - Impact analysis reporting
-- SVG graph export
 - Standalone packaged release
 - Multi-server ClearPass support
 
 ---
 
 ## Changelog
+
+### v1.3.1
+
+#### Graph Export
+
+- Added SVG export for Service dependency graphs
+- Added SVG export for Role Mapping Policy graphs
+- Added SVG export for Enforcement Policy graphs
+- Added SVG export for policy graphs opened from Unused Objects
+- Added scalable vector nodes, labels, edges and directional arrowheads
+- Added export of the current visible graph arrangement and expansion state
+- Excluded collapsed branches from SVG exports
+- Excluded temporary selection and search highlights from SVG exports
+- Added adaptive node sizing and label wrapping
+- Preserved long identifiers without awkward character splitting
+- Added ClearPass Policy Visualiser branding, graph title, graph type and export timestamp
+
+
+#### Fixes
+
+- Fixed inactive PNG and JPG export options on unused-policy graphs
+- Corrected export dropdown markup for unused Role Mapping and Enforcement Policy views
 
 ### v1.3.0
 
@@ -972,6 +992,6 @@ Always validate configuration changes before applying them to production environ
 
 ---
 
-**ClearPass Policy Visualiser v1.3.0**
+**ClearPass Policy Visualiser v1.3.1**
 
 Visualise. Analyse. Troubleshoot.

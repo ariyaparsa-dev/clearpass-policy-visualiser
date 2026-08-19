@@ -1618,47 +1618,1606 @@ function getExportFileName(format) {
     return `${serviceName}_${date}.${format}`;
 }
 
+function escapeSvgText(value) {
+
+    return String(
+        value ?? ""
+    )
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&apos;"
+        );
+
+}
+
+
+function numericStyleValue(
+    element,
+    propertyName,
+    fallback
+) {
+
+    const parsedValue =
+        parseFloat(
+            element.style(
+                propertyName
+            )
+        );
+
+    return Number.isFinite(
+        parsedValue
+    )
+        ? parsedValue
+        : fallback;
+
+}
+
+
+function normaliseSvgColour(
+    value,
+    fallback
+) {
+
+    const colour =
+        String(
+            value ?? ""
+        )
+        .trim();
+
+    if (
+        !colour
+        ||
+        colour === "none"
+        ||
+        colour === "transparent"
+    ) {
+
+        return fallback;
+
+    }
+
+    return colour;
+
+}
+
+
+
+function splitSvgLabel(
+    label,
+    maxCharacters
+) {
+
+    const text =
+        String(
+            label ?? ""
+        )
+        .trim();
+
+    if (!text) {
+        return [];
+    }
+
+    const sourceWords =
+        text.split(
+            /\s+/
+        );
+
+    const words = [];
+
+    /*
+     * Split individual words that are longer
+     * than the available line width.
+     */
+
+    sourceWords.forEach(
+        function (word) {
+
+            if (
+                word.length
+                <= maxCharacters
+            ) {
+
+                words.push(
+                    word
+                );
+
+                return;
+
+            }
+
+            for (
+                let index = 0;
+                index < word.length;
+                index += maxCharacters
+            ) {
+
+                words.push(
+                    word.slice(
+                        index,
+                        index + maxCharacters
+                    )
+                );
+
+            }
+
+        }
+    );
+
+    const lines = [];
+    let currentLine = "";
+
+    words.forEach(
+        function (word) {
+
+            const candidate =
+                currentLine
+                    ? `${currentLine} ${word}`
+                    : word;
+
+            if (
+                candidate.length
+                <= maxCharacters
+            ) {
+
+                currentLine =
+                    candidate;
+
+                return;
+
+            }
+
+            if (currentLine) {
+
+                lines.push(
+                    currentLine
+                );
+
+            }
+
+            currentLine =
+                word;
+
+        }
+    );
+
+    if (currentLine) {
+
+        lines.push(
+            currentLine
+        );
+
+    }
+
+    /*
+     * Preserve a reasonable maximum node-label
+     * height. Add an ellipsis if content was
+     * truncated.
+     */
+
+    if (
+        lines.length > 5
+    ) {
+
+        const visibleLines =
+            lines.slice(
+                0,
+                5
+            );
+
+        visibleLines[4] =
+            `${visibleLines[4]}…`;
+
+        return visibleLines;
+
+    }
+
+    return lines;
+
+}
+
+function getRectangleBoundaryPoint(
+    fromX,
+    fromY,
+    toX,
+    toY,
+    rectangleWidth,
+    rectangleHeight
+) {
+
+    const deltaX =
+        toX - fromX;
+
+    const deltaY =
+        toY - fromY;
+
+    if (
+        deltaX === 0
+        &&
+        deltaY === 0
+    ) {
+
+        return {
+            x: fromX,
+            y: fromY
+        };
+
+    }
+
+    const halfWidth =
+        rectangleWidth / 2;
+
+    const halfHeight =
+        rectangleHeight / 2;
+
+    const horizontalScale =
+        deltaX !== 0
+            ? halfWidth / Math.abs(deltaX)
+            : Infinity;
+
+    const verticalScale =
+        deltaY !== 0
+            ? halfHeight / Math.abs(deltaY)
+            : Infinity;
+
+    const scale =
+        Math.min(
+            horizontalScale,
+            verticalScale
+        );
+
+    return {
+        x:
+            fromX
+            +
+            deltaX * scale,
+
+        y:
+            fromY
+            +
+            deltaY * scale
+    };
+
+}
+
+
+function shortenLineEnd(
+    startX,
+    startY,
+    endX,
+    endY,
+    distance
+) {
+
+    const deltaX =
+        endX - startX;
+
+    const deltaY =
+        endY - startY;
+
+    const lineLength =
+        Math.hypot(
+            deltaX,
+            deltaY
+        );
+
+    if (
+        lineLength === 0
+        ||
+        lineLength <= distance
+    ) {
+
+        return {
+            x: endX,
+            y: endY
+        };
+
+    }
+
+    return {
+        x:
+            endX
+            -
+            (
+                deltaX / lineLength
+            )
+            *
+            distance,
+
+        y:
+            endY
+            -
+            (
+                deltaY / lineLength
+            )
+            *
+            distance
+    };
+
+}
+
+function getGraphExportTitle() {
+
+    const titleElement =
+        document.getElementById(
+            "serviceName"
+        );
+
+    return (
+        titleElement?.textContent?.trim()
+        ||
+        "ClearPass Policy Graph"
+    );
+
+}
+
+
+function getGraphExportType() {
+
+    const title =
+        getGraphExportTitle()
+            .toLowerCase();
+
+    if (
+        title.includes(
+            "role mapping policy"
+        )
+    ) {
+
+        return "Role Mapping Policy Graph";
+
+    }
+
+    if (
+        title.includes(
+            "enforcement policy"
+        )
+    ) {
+
+        return "Enforcement Policy Graph";
+
+    }
+
+    /*
+     * The normal Service page heading contains
+     * only the Service name, so it may not include
+     * the word "service".
+     *
+     * Object detail pages explicitly include
+     * "Role Mapping Policy" or
+     * "Enforcement Policy" in their headings.
+     */
+
+    return "Service Dependency Graph";
+
+}
+
+function getSvgExportTimestamp() {
+
+    return new Intl.DateTimeFormat(
+        "en-AU",
+        {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        }
+    ).format(
+        new Date()
+    );
+
+}
+
+
+function safeSvgIdentifier(value) {
+
+    const safeValue =
+        String(
+            value ?? ""
+        )
+        .trim()
+        .toLowerCase()
+        .replace(
+            /[^a-z0-9_-]+/g,
+            "-"
+        )
+        .replace(
+            /^-+|-+$/g,
+            ""
+        );
+
+    return (
+        safeValue
+        ||
+        "graph-object"
+    );
+
+}
+
+function getSvgLegendDefinitions() {
+
+    return {
+        service: {
+            label: "Service",
+            colour: "#01A982",
+            border: "#7FFFD4"
+        },
+
+        group: {
+            label: "Group",
+            colour: "#1F2937",
+            border: "#6B7280"
+        },
+
+        auth_method: {
+            label: "Authentication Method",
+            colour: "#2563EB",
+            border: "#93C5FD"
+        },
+
+        auth_source: {
+            label: "Authentication Source",
+            colour: "#0D6EFD",
+            border: "#93C5FD"
+        },
+
+        authz_source: {
+            label: "Authorisation Source",
+            colour: "#7C3AED",
+            border: "#C4B5FD"
+        },
+
+        role_mapping: {
+            label: "Role Mapping Policy",
+            colour: "#06B6D4",
+            border: "#A5F3FC"
+        },
+
+        role_mapping_condition: {
+            label: "Role Mapping Rule",
+            colour: "#074C5E",
+            border: "#67E8F9"
+        },
+
+        mapped_role: {
+            label: "Mapped Role",
+            colour: "#22C55E",
+            border: "#BBF7D0"
+        },
+
+        enforcement_policy: {
+            label: "Enforcement Policy",
+            colour: "#F89148",
+            border: "#FDBA74"
+        },
+
+        enforcement_condition: {
+            label: "Enforcement Rule",
+            colour: "#A5415A",
+            border: "#FDA4AF"
+        },
+
+        enforcement_profile: {
+            label: "Enforcement Profile",
+            colour: "#E4B911",
+            border: "#FEF08A"
+        },
+
+        enforcement_attribute: {
+            label: "Enforcement Attribute",
+            colour: "#475569",
+            border: "#CBD5E1"
+        }
+    };
+
+}
+
+function getSvgLegendItems(
+    visibleNodes
+) {
+
+    const definitions =
+        getSvgLegendDefinitions();
+
+    const detectedTypes =
+        new Set();
+
+    visibleNodes.forEach(
+        function (node) {
+
+            const nodeType =
+                String(
+                    node.data(
+                        "type"
+                    )
+                    ??
+                    ""
+                );
+
+            if (
+                definitions[
+                    nodeType
+                ]
+            ) {
+
+                detectedTypes.add(
+                    nodeType
+                );
+
+            }
+
+        }
+    );
+
+    return Object.keys(
+        definitions
+    )
+    .filter(
+        function (nodeType) {
+
+            return detectedTypes.has(
+                nodeType
+            );
+
+        }
+    )
+    .map(
+        function (nodeType) {
+
+            return {
+                type: nodeType,
+                ...definitions[
+                    nodeType
+                ]
+            };
+
+        }
+    );
+
+}
+
+function buildGraphSvg() {
+
+    if (!window.cy) {
+
+        throw new Error(
+            "The graph is not available for SVG export."
+        );
+
+    }
+
+    const padding = 100;
+
+    const headerHeight = 130;
+
+    const legendItemHeight = 34;
+
+    const legendTopPadding = 54;
+
+    const legendBottomPadding = 32;
+
+    const visibleElements =
+        window.cy.elements(
+            ":visible"
+        );
+
+    const visibleNodes =
+        visibleElements.nodes();
+
+    const visibleEdges =
+        visibleElements.edges();    
+
+    if (
+        visibleElements.length === 0
+    ) {
+
+        throw new Error(
+            "There are no visible graph elements to export."
+        );
+
+    }
+
+    const legendItems =
+        getSvgLegendItems(
+            visibleNodes
+        );
+
+    const bounds =
+        visibleElements.boundingBox(
+            {
+                includeLabels: true,
+                includeOverlays: false
+            }
+        );
+
+    const naturalSvgWidth =
+        Math.ceil(
+            bounds.w
+            +
+            padding * 2
+        );
+
+    const minimumSvgWidth =
+        1400;
+
+    const svgWidth =
+        Math.max(
+            minimumSvgWidth,
+            naturalSvgWidth
+        );
+
+    const legendColumns =
+        svgWidth >= 1400
+            ? 4
+            : (
+                svgWidth >= 850
+                    ? 3
+                    : 2
+            );
+
+    const legendRows =
+        Math.max(
+            1,
+            Math.ceil(
+                legendItems.length
+                /
+                legendColumns
+            )
+        );
+
+    const footerHeight =
+        legendTopPadding
+        +
+        legendRows
+        *
+        legendItemHeight
+        +
+        legendBottomPadding;        
+
+    const svgHeight =
+        Math.max(
+            1,
+            Math.ceil(
+                bounds.h
+                +
+                padding * 2
+                +
+                headerHeight
+                +
+                footerHeight
+            )
+        );
+
+    const additionalHorizontalSpace =
+        Math.max(
+            0,
+            svgWidth
+            -
+            naturalSvgWidth
+        );
+
+    const offsetX =
+        padding
+        +
+        additionalHorizontalSpace / 2
+        -
+        bounds.x1;
+
+    const offsetY =
+        padding
+        +
+        headerHeight
+        -
+        bounds.y1;
+
+    const exportTitle =
+        getGraphExportTitle();
+
+    const exportType =
+        getGraphExportType();
+
+    const exportTimestamp =
+        getSvgExportTimestamp();    
+
+    const edgeParts = [];
+    const nodeParts = [];
+
+    const legendParts = [];
+
+    const legendContentWidth =
+        svgWidth
+        -
+        padding * 2;
+
+    const legendColumnWidth =
+        legendContentWidth
+        /
+        legendColumns;
+
+    const footerTop =
+        svgHeight
+        -
+        footerHeight;
+
+    const legendStartY =
+        footerTop
+        +
+        legendTopPadding;    
+
+    legendItems.forEach(
+        function (
+            item,
+            index
+        ) {
+
+            const columnIndex =
+                index
+                %
+                legendColumns;
+
+            const rowIndex =
+                Math.floor(
+                    index
+                    /
+                    legendColumns
+                );
+
+            const itemX =
+                padding
+                +
+                columnIndex
+                *
+                legendColumnWidth;
+
+            const itemY =
+                legendStartY
+                +
+                rowIndex
+                *
+                legendItemHeight;
+
+            legendParts.push(
+                `
+                <g
+                    class="legend-item"
+                    data-node-type="${escapeSvgText(
+                        item.type
+                    )}"
+                >
+
+                    <rect
+                        x="${itemX}"
+                        y="${
+                            itemY - 13
+                        }"
+                        width="22"
+                        height="16"
+                        rx="4"
+                        ry="4"
+                        fill="${escapeSvgText(
+                            item.colour
+                        )}"
+                        stroke="${escapeSvgText(
+                            item.border
+                        )}"
+                        stroke-width="1.5"
+                    />
+
+                    <text
+                        x="${
+                            itemX + 32
+                        }"
+                        y="${
+                            itemY
+                        }"
+                        fill="#CBD5E1"
+                        font-family="Arial, Helvetica, sans-serif"
+                        font-size="14"
+                        font-weight="600"
+                    >
+                        ${escapeSvgText(
+                            item.label
+                        )}
+                    </text>
+
+                </g>
+                `
+            );
+
+        }
+    );
+
+    edgeParts.push(
+        `
+        <defs>
+
+            <marker
+                id="graph-arrow"
+                viewBox="0 0 16 16"
+                refX="14"
+                refY="8"
+                markerWidth="18"
+                markerHeight="18"
+                markerUnits="userSpaceOnUse"
+                orient="auto"
+            >
+
+                <path
+                    d="M 1 1 L 15 8 L 1 15 Z"
+                    fill="#01A982"
+                    stroke="#7FFFD4"
+                    stroke-width="1"
+                    stroke-linejoin="round"
+                />
+
+            </marker>
+
+        </defs>
+        `
+    );
+
+
+    visibleEdges.forEach(
+        function (edge) {
+
+            const sourceNode =
+                edge.source();
+
+            const targetNode =
+                edge.target();
+
+            const sourcePosition =
+                sourceNode.position();
+
+            const targetPosition =
+                targetNode.position();
+
+            const sourceCentreX =
+                sourcePosition.x
+                +
+                offsetX;
+
+            const sourceCentreY =
+                sourcePosition.y
+                +
+                offsetY;
+
+            const targetCentreX =
+                targetPosition.x
+                +
+                offsetX;
+
+            const targetCentreY =
+                targetPosition.y
+                +
+                offsetY;
+
+
+            /*
+            * Calculate where the edge intersects the
+            * source and target node rectangles.
+            */
+
+            const sourceBoundary =
+                getRectangleBoundaryPoint(
+                    sourceCentreX,
+                    sourceCentreY,
+                    targetCentreX,
+                    targetCentreY,
+                    sourceNode.outerWidth(),
+                    sourceNode.outerHeight()
+                );
+
+            const targetBoundary =
+                getRectangleBoundaryPoint(
+                    targetCentreX,
+                    targetCentreY,
+                    sourceCentreX,
+                    sourceCentreY,
+                    targetNode.outerWidth(),
+                    targetNode.outerHeight()
+                );
+
+
+            /*
+            * Pull the target endpoint slightly away from
+            * the node boundary so the complete arrowhead
+            * remains visible.
+            */
+
+            const visibleTarget =
+                shortenLineEnd(
+                    sourceBoundary.x,
+                    sourceBoundary.y,
+                    targetBoundary.x,
+                    targetBoundary.y,
+                    10
+                );
+
+            const sourceX =
+                sourceBoundary.x;
+
+            const sourceY =
+                sourceBoundary.y;
+
+            const targetX =
+                visibleTarget.x;
+
+            const targetY =
+                visibleTarget.y; 
+
+            const hasTransientHighlight =
+                edge.hasClass(
+                    "search-match"
+                );
+
+            const lineColour =
+                hasTransientHighlight
+                    ? "#01A982"
+                    : normaliseSvgColour(
+                        edge.style(
+                            "line-color"
+                        ),
+                        "#01A982"
+                    );
+
+            const lineWidth =
+                hasTransientHighlight
+                    ? 5
+                    : numericStyleValue(
+                        edge,
+                        "width",
+                        3
+                    );
+
+            edgeParts.push(
+                `
+                <line
+                    x1="${sourceX}"
+                    y1="${sourceY}"
+                    x2="${targetX}"
+                    y2="${targetY}"
+                    stroke="${escapeSvgText(lineColour)}"
+                    stroke-width="${lineWidth}"
+                    stroke-linecap="round"
+                    marker-end="url(#graph-arrow)"
+                />
+                `
+            );
+
+        }
+    );
+
+
+    visibleNodes.forEach(
+        function (node) {
+
+            const position =
+                node.position();
+
+            const centreX =
+                position.x
+                +
+                offsetX;
+
+            const centreY =
+                position.y
+                +
+                offsetY;
+
+            /*
+            * Cytoscape style values can be "label" rather
+            * than numeric for dynamically sized nodes.
+            *
+            * outerWidth() and outerHeight() return the
+            * actual calculated node dimensions, including
+            * padding and border.
+            */
+
+            const width =
+                Math.max(
+                    1,
+                    node.outerWidth()
+                );
+
+            const height =
+                Math.max(
+                    1,
+                    node.outerHeight()
+                );
+
+            const x =
+                centreX
+                -
+                width / 2;
+
+            const y =
+                centreY
+                -
+                height / 2;
+
+            const cornerRadius =
+                Math.min(
+                    12,
+                    width / 10,
+                    height / 10
+                );
+
+            const fillColour =
+                normaliseSvgColour(
+                    node.style(
+                        "background-color"
+                    ),
+                    "#1e293b"
+                );
+
+            const nodeType =
+                String(
+                    node.data(
+                        "type"
+                    )
+                    ??
+                    "object"
+                );
+                
+            const legendDefinition =
+                getSvgLegendDefinitions()[
+                    nodeType
+                ];
+
+            const hasTransientHighlight =
+                node === selectedNode
+                ||
+                node.hasClass(
+                    "search-match"
+                )
+                ||
+                node.hasClass(
+                    "active-search-match"
+                );
+
+            const borderColour =
+                hasTransientHighlight
+                    ? (
+                        legendDefinition?.border
+                        ??
+                        "#64748B"
+                    )
+                    : normaliseSvgColour(
+                        node.style(
+                            "border-color"
+                        ),
+                        "#475569"
+                    );
+
+            const borderWidth =
+                hasTransientHighlight
+                    ? 2
+                    : numericStyleValue(
+                        node,
+                        "border-width",
+                        1
+                    );
+                    
+            const textColour =
+                normaliseSvgColour(
+                    node.style(
+                        "color"
+                    ),
+                    "#ffffff"
+                );
+
+            const fontSize =
+                numericStyleValue(
+                    node,
+                    "font-size",
+                    12
+                );
+
+            const label =
+                node.data(
+                    "baseLabel"
+                )
+                ??
+                node.data(
+                    "label"
+                )
+                ??
+                node.data(
+                    "name"
+                )
+                ??
+                node.id();
+
+            /*
+            * Approximate the number of characters that fit
+            * at the node's calculated font size.
+            */
+
+            const labelText =
+                String(
+                    label ?? ""
+                )
+                .trim();
+
+            const labelWords =
+                labelText
+                    ? labelText.split(
+                        /\s+/
+                    )
+                    : [];
+
+            const longestWordLength =
+                labelWords.length > 0
+                    ? Math.max(
+                        ...labelWords.map(
+                            function (word) {
+                                return word.length;
+                            }
+                        )
+                    )
+                    : 0;
+
+            const availableTextWidth =
+                Math.max(
+                    32,
+                    width - 18
+                );
+
+
+
+            const nodeGroupId =
+                `node-${safeSvgIdentifier(
+                    node.id()
+                )}`;
+
+            const nodeTooltip =
+                `${label} (${nodeType.replace(
+                    /_/g,
+                    " "
+                )})`;
+
+
+            /*
+            * Preserve complete identifiers such as:
+            *
+            * Aruba-User-Role
+            * Session-Timeout
+            * Filter-Id
+            *
+            * Reduce the exported font size when required
+            * rather than splitting identifiers.
+            */
+
+            const longestWordFontSize =
+                longestWordLength > 0
+                    ? (
+                        availableTextWidth
+                        /
+                        (
+                            longestWordLength
+                            *
+                            0.58
+                        )
+                    )
+                    : fontSize;
+
+            const exportFontSize =
+                Math.max(
+                    6,
+                    Math.min(
+                        fontSize,
+                        longestWordFontSize
+                    )
+                );
+
+            const approximateCharacterWidth =
+                Math.max(
+                    3.5,
+                    exportFontSize * 0.58
+                );
+
+            const maxCharactersPerLine =
+                Math.max(
+                    8,
+                    longestWordLength,
+                    Math.floor(
+                        availableTextWidth
+                        /
+                        approximateCharacterWidth
+                    )
+                );
+
+            const lines =
+                splitSvgLabel(
+                    labelText,
+                    maxCharactersPerLine
+                );
+
+            const lineHeight =
+                exportFontSize
+                *
+                1.25;
+
+            const textStartY =
+                centreY
+                -
+                (
+                    (
+                        lines.length
+                        -
+                        1
+                    )
+                    *
+                    lineHeight
+                )
+                /
+                2;
+
+
+            /*
+            * Generate every text element before building
+            * the containing node group.
+            */
+
+            const nodeTextParts = [];
+
+            lines.forEach(
+                function (
+                    line,
+                    lineIndex
+                ) {
+
+                    nodeTextParts.push(
+                        `
+                        <text
+                            x="${centreX}"
+                            y="${
+                                textStartY
+                                +
+                                lineIndex
+                                *
+                                lineHeight
+                            }"
+                            fill="${escapeSvgText(
+                                textColour
+                            )}"
+                            font-family="Arial, Helvetica, sans-serif"
+                            font-size="${exportFontSize}"
+                            font-weight="600"
+                            text-anchor="middle"
+                            dominant-baseline="middle"
+                            pointer-events="none"
+                        >
+                            ${escapeSvgText(line)}
+                        </text>
+                        `
+                    );
+
+                }
+            );
+
+
+            nodeParts.push(
+                `
+                <g
+                    id="${escapeSvgText(
+                        nodeGroupId
+                    )}"
+                    class="graph-node graph-node-${escapeSvgText(
+                        nodeType
+                    )}"
+                    data-node-id="${escapeSvgText(
+                        node.id()
+                    )}"
+                    data-node-type="${escapeSvgText(
+                        nodeType
+                    )}"
+                >
+
+                    <title>
+                        ${escapeSvgText(
+                            nodeTooltip
+                        )}
+                    </title>
+
+                    <rect
+                        x="${x}"
+                        y="${y}"
+                        width="${width}"
+                        height="${height}"
+                        rx="${cornerRadius}"
+                        ry="${cornerRadius}"
+                        fill="${escapeSvgText(
+                            fillColour
+                        )}"
+                        stroke="${escapeSvgText(
+                            borderColour
+                        )}"
+                        stroke-width="${borderWidth}"
+                    />
+
+                    ${nodeTextParts.join("")}
+
+                </g>
+                `
+            );          
+
+        }
+    );
+
+
+    return `
+        <?xml version="1.0" encoding="UTF-8"?>
+
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="${svgWidth}"
+            height="${svgHeight}"
+            viewBox="0 0 ${svgWidth} ${svgHeight}"
+            role="img"
+            aria-labelledby="svg-title svg-description"
+        >
+
+            <title id="svg-title">
+                ${escapeSvgText(
+                    exportTitle
+                )}
+            </title>
+
+            <desc id="svg-description">
+                ${escapeSvgText(
+                    exportType
+                )} exported from ClearPass Policy Visualiser.
+            </desc>
+
+            <rect
+                id="svg-background"
+                x="0"
+                y="0"
+                width="100%"
+                height="100%"
+                fill="#0f172a"
+            />
+
+            <g id="svg-header">
+
+                <text
+                    x="${padding}"
+                    y="52"
+                    fill="#01A982"
+                    font-family="Arial, Helvetica, sans-serif"
+                    font-size="28"
+                    font-weight="700"
+                >
+                    ClearPass Policy Visualiser
+                </text>
+
+                <text
+                    x="${padding}"
+                    y="84"
+                    fill="#ffffff"
+                    font-family="Arial, Helvetica, sans-serif"
+                    font-size="20"
+                    font-weight="600"
+                >
+                    ${escapeSvgText(
+                        exportTitle
+                    )}
+                </text>
+
+                <text
+                    x="${padding}"
+                    y="110"
+                    fill="#94a3b8"
+                    font-family="Arial, Helvetica, sans-serif"
+                    font-size="14"
+                >
+                    ${escapeSvgText(
+                        exportType
+                    )} · Exported
+                    ${escapeSvgText(
+                        exportTimestamp
+                    )}
+                </text>
+
+                <line
+                    x1="${padding}"
+                    y1="${headerHeight}"
+                    x2="${
+                        svgWidth
+                        -
+                        padding
+                    }"
+                    y2="${headerHeight}"
+                    stroke="#334155"
+                    stroke-width="2"
+                />
+
+            </g>
+
+            <g id="graph-edges">
+                ${edgeParts.join("")}
+            </g>
+
+            <g id="graph-nodes">
+                ${nodeParts.join("")}
+            </g>
+
+            <g id="svg-footer">
+
+                <line
+                    x1="${padding}"
+                    y1="${footerTop}"
+                    x2="${
+                        svgWidth
+                        -
+                        padding
+                    }"
+                    y2="${footerTop}"
+                    stroke="#334155"
+                    stroke-width="2"
+                />
+
+                <text
+                    x="${padding}"
+                    y="${
+                        footerTop + 32
+                    }"
+                    fill="#FFFFFF"
+                    font-family="Arial, Helvetica, sans-serif"
+                    font-size="16"
+                    font-weight="700"
+                >
+                    Graph Legend
+                </text>
+
+                <g id="graph-legend-items">
+                    ${legendParts.join("")}
+                </g>
+
+            </g>
+
+        </svg>
+    `.trim();
+    }
+
+function exportGraphAsSvg() {
+
+    const svgContent =
+        buildGraphSvg();
+
+    const svgBlob =
+        new Blob(
+            [
+                svgContent
+            ],
+            {
+                type:
+                    "image/svg+xml;charset=utf-8"
+            }
+        );
+
+    return URL.createObjectURL(
+        svgBlob
+    );
+
+}
 
 function exportGraph(format) {
 
     let imageData;
 
-    if (format === "png") {
+    try {
 
-        imageData = window.cy.png({
-            full: true,
-            scale: 3,
-            bg: "#ffffff"
-        });
+        if (format === "png") {
 
-    } else if (format === "jpg") {
+            imageData = window.cy.png({
+                full: true,
+                scale: 3,
+                bg: "#ffffff"
+            });
 
-        imageData = window.cy.jpg({
-            full: true,
-            scale: 3,
-            quality: 1.0,
-            bg: "#ffffff"
-        });
+        } else if (format === "jpg") {
 
-    } else {
+            imageData = window.cy.jpg({
+                full: true,
+                scale: 3,
+                quality: 1.0,
+                bg: "#ffffff"
+            });
 
-        console.warn("Unsupported export format:", format);
+        } else if (format === "svg") {
+
+            imageData =
+                exportGraphAsSvg();
+
+        } else {
+
+            console.warn(
+                "Unsupported export format:",
+                format
+            );
+
+            return;
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            `Unable to export graph as ${format}:`,
+            error
+        );
+
+        const errorMessage =
+            error instanceof Error
+                ? error.message
+                : String(error);
+
+        window.alert(
+            `Unable to export the graph as ${format.toUpperCase()}.\n\n`
+            +
+            errorMessage
+        );
+
         return;
 
     }
 
     const link =
-        document.createElement("a");
+        document.createElement(
+            "a"
+        );
 
     link.href =
         imageData;
 
     link.download =
-        getExportFileName(format);
+        getExportFileName(
+            format
+        );
 
-    document.body.appendChild(link);
+    document.body.appendChild(
+        link
+    );
+
     link.click();
-    document.body.removeChild(link);
+
+    link.remove();
+
+    if (format === "svg") {
+
+        setTimeout(
+            function () {
+
+                URL.revokeObjectURL(
+                    imageData
+                );
+
+            },
+            1000
+        );
+
+    }
+
 }
 
 
@@ -1693,6 +3252,28 @@ if (exportJpgBtn) {
             event.preventDefault();
 
             exportGraph("jpg");
+
+        }
+    );
+
+}
+
+const exportSvgBtn =
+    document.getElementById(
+        "exportSvgBtn"
+    );
+
+if (exportSvgBtn) {
+
+    exportSvgBtn.addEventListener(
+        "click",
+        function (event) {
+
+            event.preventDefault();
+
+            exportGraph(
+                "svg"
+            );
 
         }
     );
