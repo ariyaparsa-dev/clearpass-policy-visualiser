@@ -829,10 +829,8 @@ Planned enhancements include:
 
 - Administrator-only connection configuration page
 - Secure validation and update of saved ClearPass, RADIUS and PostgreSQL connection settings
-- Additional unused-object drill-down views
 - Enhanced role-based authorisation controls
 - Impact analysis reporting
-- Additional export options
 - SVG graph export
 - Standalone packaged release
 - Multi-server ClearPass support
