@@ -127,12 +127,48 @@
                 <button id="centerGraphBtn" class="btn btn-outline-light btn-sm ms-2">Centre Graph</button>
 
                 <div class="dropdown d-inline-block ms-2">
-                    <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button"
-                        id="exportMenuButton" data-bs-toggle="dropdown" aria-expanded="false">Export</button>
-                    <ul class="dropdown-menu dropdown-menu-dark export-menu">
-                        <li>#PNG</a></li>
-                        <li>#</li>
+
+                    <button
+                        class="btn btn-outline-light btn-sm dropdown-toggle"
+                        type="button"
+                        id="exportMenuButton"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                    >
+                        Export
+                    </button>
+
+                    <ul
+                        class="
+                            dropdown-menu
+                            dropdown-menu-dark
+                            export-menu
+                        "
+                        aria-labelledby="exportMenuButton"
+                    >
+
+                        <li>
+                            <button
+                                id="exportPngBtn"
+                                type="button"
+                                class="dropdown-item"
+                            >
+                                Export as PNG
+                            </button>
+                        </li>
+
+                        <li>
+                            <button
+                                id="exportJpgBtn"
+                                type="button"
+                                class="dropdown-item"
+                            >
+                                Export as JPG
+                            </button>
+                        </li>
+
                     </ul>
+
                 </div>
 
                 <input type="text" id="graphSearch" placeholder="Search nodes..."
