@@ -597,6 +597,7 @@ def build_service_graph(service):
                         "data": {
                             "id": profile_node,
                             "label": f"EProf: {profile_name}",
+                            "profile_name": profile_name,
                             "type": "enforcement_profile",
                             "description":
                                 profile.get("description"),
@@ -733,6 +734,7 @@ def build_service_graph(service):
                     "data": {
                         "id": default_node,
                         "label": f"Default\n{default_profile}",
+                        "profile_name": default_profile,
                         "type": "enforcement_profile",
                         "action": "Default",
                         "parent_branch": enforcement_node

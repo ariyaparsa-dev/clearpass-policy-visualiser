@@ -19,6 +19,12 @@
         rel="stylesheet"
     >
 
+    <link
+    rel="icon"
+    type="image/x-icon"
+    href="{{ url_for('static', filename='favicon.ico') }}">
+
+
     <style>
 
         :root {
@@ -55,6 +61,28 @@
             margin-bottom: 24px;
         }
 
+        .header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+
+        .impact-analysis-button {
+            border-color: var(--hpe-green);
+            color: var(--hpe-green);
+            font-weight: 600;
+        }
+
+
+        .impact-analysis-button:hover,
+        .impact-analysis-button:focus {
+            background-color: var(--hpe-green);
+            border-color: var(--hpe-green);
+            color: #001B14;
+        }
 
         .profile-name {
             color: var(--hpe-green);
@@ -194,6 +222,15 @@
                 gap: 16px;
             }
 
+            .header-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .header-actions .btn {
+                width: 100%;
+            }
+
             .detail-row {
                 flex-direction: column;
             }
@@ -262,12 +299,33 @@
 
         </div>
 
-        <a href="{{ url_for('unused_objects') }}"
-            class="btn btn-success"
-        >
-            ← Back to Unused Objects
-        </a>
-        
+        <div class="header-actions">
+
+            <a
+                href="{{ url_for(
+                    'enforcement_profile_impact_analysis',
+                    name=profile.name
+                ) }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="
+                    btn
+                    btn-outline-success
+                    impact-analysis-button
+                "
+            >
+                Impact Analysis
+            </a>
+
+            <a
+                href="{{ url_for('unused_objects') }}"
+                class="btn btn-success"
+            >
+                ← Back to Unused Objects
+            </a>
+
+        </div>
+
     </div>
 
 
@@ -362,7 +420,6 @@
 
         </div>
 
-
         <!-- Enforcement Attributes -->
 
         <div class="col-xl-8 col-lg-8 attributes-column">
@@ -447,6 +504,34 @@
 
 
     </div>
+
+
+    <footer
+        class="
+            text-center
+            text-secondary
+            small
+            py-4
+            mt-3
+            border-top
+        "
+        style="
+            border-color:
+                var(--border)
+                !important;
+        "
+    >
+
+        ClearPass Policy Visualiser
+
+        {% if version %}
+
+            v{{ version }}
+
+        {% endif %}
+
+    </footer>
+
 
 </div>
 

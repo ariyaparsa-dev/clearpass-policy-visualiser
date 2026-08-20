@@ -1385,6 +1385,41 @@ function resetCollapsedBranches() {
 
         }
 
+        if (
+            data.type === "enforcement_profile"
+            &&
+            data.profile_name
+        ) {
+
+            const impactAnalysisUrl =
+                `/impact-analysis/enforcement-profile/${
+                    encodeURIComponent(
+                        data.profile_name
+                    )
+                }`;
+
+            extraDetails += `
+                <div class="node-info-label">
+                    Impact Analysis
+                </div>
+
+                <div class="node-info-value">
+
+                    <a href="${impactAnalysisUrl}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style="
+                            color:#FFFFFF;
+                            font-size: 0.9rem;
+                            text-decoration:underline;
+                        "
+                    > 🔗 View Impact Analysis </a>
+
+                </div>
+            `;
+
+        }
+
         infoPanel.innerHTML = `
 
             <div class="node-info-label">

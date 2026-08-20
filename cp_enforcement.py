@@ -67,18 +67,420 @@ def get_enforcement_profile(profile_name):
 
     return profile
 
-def build_profile_reference_cache():
+def get_all_enforcement_policies():
+    """
+    Retrieve all Enforcement Policies from ClearPass.
 
-    unique_policy_names = set()
+    The collection response uses:
+
+        {
+            "count": ...,
+            "_embedded": {
+                "items": [...]
+            }
+        }
+
+    Pagination is used so the result is not limited by the
+    ClearPass collection endpoint.
+    """
+
+    login = get_login()
+
+    policies = []
+
+    offset = 0
+    page_size = 100
+    total_count = None
+
+    while True:
+
+        response = (
+            ApiPolicyElements
+            .get_enforcement_policy(
+                login,
+                offset=offset,
+                limit=page_size,
+                calculate_count="true",
+            )
+        )
+
+        if not isinstance(
+            response,
+            dict,
+        ):
+
+            logger.warning(
+                "Unexpected Enforcement Policy collection "
+                "response type: %s",
+                type(response).__name__,
+            )
+
+            break
+
+        embedded = response.get(
+            "_embedded",
+            {},
+        )
+
+        if not isinstance(
+            embedded,
+            dict,
+        ):
+
+            logger.warning(
+                "Enforcement Policy collection response "
+                "did not contain an _embedded dictionary."
+            )
+
+            break
+
+        items = embedded.get(
+            "items",
+            [],
+        )
+
+        if not isinstance(
+            items,
+            list,
+        ):
+
+            logger.warning(
+                "Enforcement Policy collection response "
+                "did not contain an items list."
+            )
+
+            break
+
+        if total_count is None:
+
+            count_value = response.get(
+                "count"
+            )
+
+            try:
+
+                total_count = int(
+                    count_value
+                )
+
+            except (
+                TypeError,
+                ValueError,
+            ):
+
+                total_count = None
+
+        policies.extend(
+            items
+        )
+
+        if not items:
+            break
+
+        offset += len(
+            items
+        )
+
+        if (
+            total_count is not None
+            and
+            offset >= total_count
+        ):
+
+            break
+
+        if len(
+            items
+        ) < page_size:
+
+            break
+
+    logger.info(
+        "Retrieved %s Enforcement Policies from "
+        "ClearPass",
+        len(
+            policies
+        ),
+    )
+
+    return policies
+def build_profile_reference_cache():
+    """
+    Build complete Enforcement Profile references.
+
+    Pass 1 records profile references from every
+    Enforcement Policy, including policies that are not
+    assigned to a Service.
+
+    Pass 2 attaches Services to the Enforcement Policies
+    used by those Services.
+    """
 
     from cp_services import get_all_services
+
     cache_start = time.perf_counter()
 
     references = {}
 
+    policies_by_name = {}
+
     services = get_all_services()
 
+    policy_summaries = (
+        get_all_enforcement_policies()
+    )
+
+
+    def ensure_profile_reference(
+        profile_name,
+    ):
+        """
+        Ensure an Enforcement Profile cache entry exists.
+        """
+
+        if not profile_name:
+            return None
+
+        if profile_name not in references:
+
+            references[
+                profile_name
+            ] = {
+                "policies": {},
+                "services": {},
+            }
+
+        return references[
+            profile_name
+        ]
+
+
+    def ensure_policy_reference(
+        profile_name,
+        policy,
+    ):
+        """
+        Ensure an Enforcement Policy is associated with an
+        Enforcement Profile.
+        """
+
+        profile_reference = (
+            ensure_profile_reference(
+                profile_name
+            )
+        )
+
+        if profile_reference is None:
+            return None
+
+        policy_name = policy.get(
+            "name"
+        )
+
+        if not policy_name:
+            return None
+
+        existing_policy = profile_reference[
+            "policies"
+        ].get(
+            policy_name
+        )
+
+        if existing_policy is None:
+
+            existing_policy = {
+                "id": policy.get(
+                    "id"
+                ),
+                "name": policy_name,
+                "description": policy.get(
+                    "description"
+                ),
+                "services": {},
+            }
+
+            profile_reference[
+                "policies"
+            ][
+                policy_name
+            ] = existing_policy
+
+        else:
+
+            if (
+                existing_policy.get(
+                    "id"
+                )
+                is None
+            ):
+
+                existing_policy[
+                    "id"
+                ] = policy.get(
+                    "id"
+                )
+
+            if (
+                not existing_policy.get(
+                    "description"
+                )
+            ):
+
+                existing_policy[
+                    "description"
+                ] = policy.get(
+                    "description"
+                )
+
+        return existing_policy
+
+
+    def get_policy_profile_names(
+        policy,
+    ):
+        """
+        Return all Enforcement Profile names referenced by
+        an Enforcement Policy.
+
+        This includes the default Enforcement Profile and
+        every profile assigned to a policy rule.
+        """
+
+        profile_names = []
+
+        default_profile = policy.get(
+            "default_enforcement_profile"
+        )
+
+        if default_profile:
+
+            profile_names.append(
+                default_profile
+            )
+
+        for rule in policy.get(
+            "rules",
+            [],
+        ):
+
+            if not isinstance(
+                rule,
+                dict,
+            ):
+
+                continue
+
+            for profile_name in rule.get(
+                "enforcement_profile_names",
+                [],
+            ):
+
+                if (
+                    profile_name
+                    and
+                    profile_name
+                    not in profile_names
+                ):
+
+                    profile_names.append(
+                        profile_name
+                    )
+
+        return profile_names
+
+
+    # -------------------------------------------------
+    # Pass 1
+    #
+    # Retrieve every Enforcement Policy by name so the
+    # complete policy rules are available.
+    #
+    # This includes policies unused by any Service.
+    # -------------------------------------------------
+
+    for policy_summary in policy_summaries:
+
+        if not isinstance(
+            policy_summary,
+            dict,
+        ):
+
+            continue
+
+        policy_name = policy_summary.get(
+            "name"
+        )
+
+        if not policy_name:
+            continue
+
+        try:
+
+            policy = get_enforcement_policy(
+                policy_name
+            )
+
+        except Exception:
+
+            logger.exception(
+                "Unable to retrieve Enforcement Policy "
+                "while building profile references: %s",
+                policy_name,
+            )
+
+            continue
+
+        if not isinstance(
+            policy,
+            dict,
+        ):
+
+            continue
+
+        policies_by_name[
+            policy_name
+        ] = policy
+
+        for profile_name in (
+            get_policy_profile_names(
+                policy
+            )
+        ):
+
+            ensure_policy_reference(
+                profile_name,
+                policy,
+            )
+
+
+    # -------------------------------------------------
+    # Pass 2
+    #
+    # Attach Services to each profile and policy
+    # relationship.
+    # -------------------------------------------------
+
+    unique_service_policy_names = set()
+
     for service in services:
+
+        if not isinstance(
+            service,
+            dict,
+        ):
+
+            continue
+
+        service_name = service.get(
+            "name",
+            "Unknown Service",
+        )
+
+        if service_name.startswith(
+            "--------"
+        ):
+
+            continue
 
         policy_name = service.get(
             "enf_policy"
@@ -87,176 +489,172 @@ def build_profile_reference_cache():
         if not policy_name:
             continue
 
-        unique_policy_names.add(
+        unique_service_policy_names.add(
             policy_name
         )
 
-        try:
+        policy = policies_by_name.get(
+            policy_name
+        )
 
-            policy = get_enforcement_policy(
-                policy_name
-            )
+        if policy is None:
 
-            service_name = service.get(
-                "name",
-                "Unknown Service"
-            )
+            try:
 
-            default_profile = policy.get(
-                "default_enforcement_profile"
-            )
-
-            if (
-                default_profile
-                and not service_name.startswith("--------")
-            ):
-
-                if default_profile not in references:
-
-                    references[default_profile] = {
-                        "policies": {},
-                        "services": {}
-                    }
-
-                if (
+                policy = get_enforcement_policy(
                     policy_name
-                    not in references[default_profile]["policies"]
-                ):
+                )
 
-                    references[default_profile]["policies"][policy_name] = {
-                        "name": policy_name,
-                        "services": {}
-                    }
+            except Exception:
 
-                references[default_profile]["policies"][policy_name]["services"][service_name] = {
-                    "name": service_name,
-                    "id": service.get("id")
-                }
+                logger.exception(
+                    "Unable to retrieve Service-assigned "
+                    "Enforcement Policy while building "
+                    "profile references: %s",
+                    policy_name,
+                )
 
-                references[default_profile]["services"][service_name] = {
-                    "name": service_name,
-                    "id": service.get("id")
-                }
+                continue
 
-            for rule in policy.get(
-                "rules",
-                []
+            if not isinstance(
+                policy,
+                dict,
             ):
 
-                for profile_name in rule.get(
-                    "enforcement_profile_names",
-                    []
-                ):
-                    if profile_name not in references:
+                continue
 
-                        references[
-                            profile_name
-                        ] = {
-                            "policies": {},
-                            "services": {}
-                        }
+            policies_by_name[
+                policy_name
+            ] = policy
 
-                    service_name = service.get(
-                        "name",
-                        "Unknown Service"
-                    )
-                    if service_name.startswith(
-                        "--------"
-                    ):
-                        continue
+            for profile_name in (
+                get_policy_profile_names(
+                    policy
+                )
+            ):
 
-                    if (
-                        policy_name
-                        not in references[
-                            profile_name
-                        ]["policies"]
-                    ):
+                ensure_policy_reference(
+                    profile_name,
+                    policy,
+                )
 
-                        references[
-                            profile_name
-                        ]["policies"][
-                            policy_name
-                        ] = {
-                            "name": policy_name,
-                            "services": {}
-                        }
+        service_reference = {
+            "name": service_name,
+            "id": service.get(
+                "id"
+            ),
+        }
 
-                    references[
-                        profile_name
-                    ]["policies"][
-                        policy_name
-                    ]["services"][
-                        service_name
-                    ] = {
-                        "name": service_name,
-                        "id": service.get("id")
-                    }
+        for profile_name in (
+            get_policy_profile_names(
+                policy
+            )
+        ):
 
+            policy_reference = (
+                ensure_policy_reference(
+                    profile_name,
+                    policy,
+                )
+            )
 
-                    references[
-                        profile_name
-                    ]["services"][
-                        service_name
-                    ] = {
-                        "name": service_name,
-                        "id": service.get(
-                            "id"
-                        )
-                    }
+            if policy_reference is None:
+                continue
 
-        except Exception:
+            references[
+                profile_name
+            ][
+                "services"
+            ][
+                service_name
+            ] = service_reference
 
-            continue
+            policy_reference[
+                "services"
+            ][
+                service_name
+            ] = service_reference
+
 
     logger.info(
-        "Enforcement profile reference cache used %s unique enforcement policies",
-        len(unique_policy_names)
+        "Enforcement profile reference cache built: "
+        "%s profiles, %s total policies, "
+        "%s Service-assigned policies in %.3fs",
+        len(
+            references
+        ),
+        len(
+            policies_by_name
+        ),
+        len(
+            unique_service_policy_names
+        ),
+        time.perf_counter()
+        -
+        cache_start,
     )
 
-    logger.info(
-        "Enforcement profile reference cache built: %s profiles, %s unique policies in %.3fs",
-        len(references),
-        len(unique_policy_names),
-        time.perf_counter() - cache_start
-    )
 
     return {
 
-        profile: {
+        profile_name: {
 
             "policies": sorted(
                 [
                     {
-                        "name": policy["name"],
+                        "id": policy.get(
+                            "id"
+                        ),
+                        "name": policy.get(
+                            "name"
+                        ),
+                        "description": policy.get(
+                            "description"
+                        ),
                         "services": sorted(
                             list(
-                                policy["services"].values()
+                                policy.get(
+                                    "services",
+                                    {}
+                                ).values()
                             ),
-                            key=lambda x: x.get(
-                                "name",
-                                ""
-                            )
-                        )
+                            key=lambda service: (
+                                service.get(
+                                    "name",
+                                    ""
+                                )
+                            ),
+                        ),
                     }
-                    for policy in
-                    data["policies"].values()
+                    for policy in profile_data[
+                        "policies"
+                    ].values()
                 ],
-                key=lambda x: x["name"]
+                key=lambda policy: (
+                    policy.get(
+                        "name",
+                        ""
+                    )
+                ),
             ),
 
             "services": sorted(
                 list(
-                    data["services"].values()
+                    profile_data[
+                        "services"
+                    ].values()
                 ),
-                key=lambda x: x.get(
-                    "name",
-                    ""
-                )
-            )
+                key=lambda service: (
+                    service.get(
+                        "name",
+                        ""
+                    )
+                ),
+            ),
 
         }
 
-        for profile, data
+        for profile_name, profile_data
         in references.items()
 
     }

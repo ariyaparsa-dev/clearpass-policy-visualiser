@@ -2,10 +2,6 @@ import logging
 
 from cp_enforcement import get_enforcement_details
 from cp_role_mapping import get_role_mapping_details
-from cp_enforcement import (
-    get_enforcement_details,
-    get_enforcement_profile
-)
 
 
 logger = logging.getLogger(__name__)
@@ -247,6 +243,7 @@ def build_enforcement_policy_graph(policy_name):
                 "data": {
                     "id": profile_node,
                     "label": f"EProf: {profile_name}",
+                    "profile_name": profile_name,
                     "type": "enforcement_profile",
 
                     "description":
@@ -318,6 +315,7 @@ def build_enforcement_policy_graph(policy_name):
             "data": {
                 "id": default_node,
                 "label": f"Default\n{default_profile}",
+                "profile_name": default_profile,
                 "type": "enforcement_profile",
                 "action": "Default",
                 "parent_branch": root_id

@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Impact Analysis - {{ impact.object.name }}
+    </title>
+
+    <link
+        rel="icon"
+        type="image/x-icon"
+        href="{{ url_for('static', filename='favicon.ico') }}">
+
+    <style>
+
+        :root {
+            --hpe-green: #01A982;
+            --background: #0f172a;
+            --navbar: #111827;
+            --card: #1e293b;
+            --card-dark: #111827;
+            --border: #334155;
+            --border-secondary: #475569;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --success: #22c55e;
+            --warning: #facc15;
+            --danger: #ef4444;
+            --information: #38bdf8;
+        }
+
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--background);
+            color: var(--text);
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+        }
+
+
+        .navbar {
+            padding: 8px 16px;
+            background: var(--navbar);
+            border-bottom:
+                3px solid
+                var(--hpe-green);
+        }
+
+
+        .navbar-brand {
+            color: #ffffff;
+            font-size: 20px;
+            line-height: 1.5;
+        }
+
+
+        .brand-green {
+            color: var(--hpe-green);
+            font-weight: 700;
+        }
+
+
+        .content-wrapper {
+            width:
+                min(
+                    1400px,
+                    calc(100% - 40px)
+                );
+            margin: 32px auto;
+        }
+
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+
+        .page-title {
+            margin: 0;
+            color: var(--hpe-green);
+            font-size: 30px;
+            line-height: 1.25;
+        }
+
+
+        .page-subtitle {
+            margin: 8px 0 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns:
+                repeat(
+                    4,
+                    minmax(0, 1fr)
+                );
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+
+        .summary-card {
+            min-width: 0;
+            padding: 20px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+
+        .summary-label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+
+        .summary-value {
+            margin-top: 10px;
+            color: #ffffff;
+            font-size: 30px;
+            font-weight: 700;
+        }
+
+
+        .summary-value.status-referenced {
+            color: var(--success);
+        }
+
+
+        .summary-value.status-unreferenced {
+            color: var(--warning);
+        }
+
+
+        .report-grid {
+            display: grid;
+            grid-template-columns:
+                minmax(0, 1fr)
+                minmax(0, 1fr);
+            gap: 20px;
+        }
+
+
+        .report-card {
+            min-width: 0;
+            padding: 22px;
+            background: var(--card);
+            border:
+                1px solid
+                var(--border);
+            border-radius: 10px;
+        }
+
+
+        .report-card.full-width {
+            grid-column:
+                1 / -1;
+        }
+
+
+        .report-card h2 {
+            margin: 0 0 18px;
+            color: #ffffff;
+            font-size: 20px;
+        }
+
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns:
+                minmax(150px, 0.35fr)
+                minmax(0, 1fr);
+            gap: 12px 18px;
+        }
+
+
+        .detail-label {
+            color: var(--hpe-green);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+
+        .detail-value {
+            min-width: 0;
+            color: var(--text);
+            overflow-wrap: anywhere;
+        }
+
+
+        .object-list {
+            display: grid;
+            gap: 12px;
+        }
+
+
+        .object-item {
+            padding: 15px;
+            background: var(--card-dark);
+            border:
+                1px solid
+                var(--border);
+            border-radius: 8px;
+        }
+
+
+        .object-name {
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+
+        .object-meta {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+
+        .service-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-top: 12px;
+        }
+
+
+        .service-chip {
+            padding: 6px 9px;
+            background: #0c4a6e;
+            border:
+                1px solid
+                #0369a1;
+            border-radius: 999px;
+            color: #bae6fd;
+            font-size: 12px;
+        }
+
+
+        .attribute-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+
+        .attribute-table th,
+        .attribute-table td {
+            padding: 11px 12px;
+            border-bottom:
+                1px solid
+                var(--border);
+            text-align: left;
+            vertical-align: top;
+        }
+
+
+        .attribute-table th {
+            color: var(--muted);
+            font-size: 12px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+
+        .attribute-table td {
+            color: var(--text);
+            overflow-wrap: anywhere;
+        }
+
+
+        .message-list {
+            display: grid;
+            gap: 10px;
+        }
+
+
+        .message {
+            padding: 13px 15px;
+            border-radius: 7px;
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+
+        .message-observation {
+            background: #082f49;
+            border:
+                1px solid
+                #075985;
+        }
+
+
+        .message-warning {
+            background: #422006;
+            border:
+                1px solid
+                #a16207;
+            color: #fef3c7;
+        }
+
+
+        .empty-state {
+            padding: 20px;
+            background: var(--card-dark);
+            border:
+                1px dashed
+                var(--border-secondary);
+            border-radius: 8px;
+            color: var(--muted);
+            text-align: center;
+            line-height: 1.6;
+        }
+
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 22px;
+            border-top:
+                1px solid
+                var(--border);
+            color: #64748b;
+            font-size: 13px;
+            text-align: center;
+        }
+
+
+        @media (
+            max-width: 1000px
+        ) {
+
+            .summary-grid {
+                grid-template-columns:
+                    repeat(
+                        2,
+                        minmax(0, 1fr)
+                    );
+            }
+
+            .report-grid {
+                grid-template-columns:
+                    1fr;
+            }
+
+            .report-card.full-width {
+                grid-column: auto;
+            }
+
+        }
+
+
+        @media (
+            max-width: 650px
+        ) {
+
+            .content-wrapper {
+                width:
+                    calc(
+                        100% - 24px
+                    );
+                margin-top: 22px;
+            }
+
+            .page-header {
+                flex-direction: column;
+            }
+            
+            .summary-grid {
+                grid-template-columns:
+                    1fr;
+            }
+
+            .detail-grid {
+                grid-template-columns:
+                    1fr;
+                gap: 5px;
+            }
+
+            .detail-value {
+                margin-bottom: 10px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+    <nav class="navbar">
+
+        <span class="navbar-brand">
+
+            <span class="brand-green">
+                ClearPass
+            </span>
+
+            Policy Visualiser
+
+        </span>
+
+    </nav>
+
+
+    <main class="content-wrapper">
+
+        <header class="page-header">
+
+            <div>
+
+                <h1 class="page-title">
+                    Impact Analysis
+                </h1>
+
+                <p class="page-subtitle">
+
+                    {{ impact.object.type }}:
+                    {{ impact.object.name }}
+
+                </p>
+
+            </div>
+
+        </header>
+
+
+        <section class="summary-grid">
+
+            <article class="summary-card">
+
+                <div class="summary-label">
+                    Usage Status
+                </div>
+
+                <div
+                    class="
+                        summary-value
+                        {% if impact.summary.referenced %}
+                            status-referenced
+                        {% else %}
+                            status-unreferenced
+                        {% endif %}
+                    "
+                >
+
+                    {% if impact.summary.referenced %}
+                        Referenced
+                    {% else %}
+                        Unreferenced
+                    {% endif %}
+
+                </div>
+
+            </article>
+
+
+            <article class="summary-card">
+
+                <div class="summary-label">
+                    Affected Policies
+                </div>
+
+                <div class="summary-value">
+                    {{ impact.summary.affected_policy_count }}
+                </div>
+
+            </article>
+
+
+            <article class="summary-card">
+
+                <div class="summary-label">
+                    Affected Services
+                </div>
+
+                <div class="summary-value">
+                    {{ impact.summary.affected_service_count }}
+                </div>
+
+            </article>
+
+
+            <article class="summary-card">
+
+                <div class="summary-label">
+                    Profile Attributes
+                </div>
+
+                <div class="summary-value">
+                    {{ impact.summary.attribute_count }}
+                </div>
+
+            </article>
+
+        </section>
+
+
+        <section class="report-grid">
+
+            <article class="report-card">
+
+                <h2>
+                    Selected Object
+                </h2>
+
+                <div class="detail-grid">
+
+                    <div class="detail-label">
+                        Name
+                    </div>
+
+                    <div class="detail-value">
+                        {{ impact.object.name }}
+                    </div>
+
+
+                    <div class="detail-label">
+                        Object Type
+                    </div>
+
+                    <div class="detail-value">
+                        {{ impact.object.type }}
+                    </div>
+
+
+                    <div class="detail-label">
+                        Object ID
+                    </div>
+
+                    <div class="detail-value">
+                        {{ impact.object.id or "Not available" }}
+                    </div>
+
+
+                    <div class="detail-label">
+                        Profile Type
+                    </div>
+
+                    <div class="detail-value">
+                        {{ impact.object.profile_type or "Not configured" }}
+                    </div>
+
+
+                    <div class="detail-label">
+                        Action
+                    </div>
+
+                    <div class="detail-value">
+                        {{ impact.object.action or "Not configured" }}
+                    </div>
+
+
+                    <div class="detail-label">
+                        Description
+                    </div>
+
+                    <div class="detail-value">
+                        {{ impact.object.description or "Not configured" }}
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <article class="report-card">
+
+                <h2>
+                    Analysis Observations
+                </h2>
+
+                {% if impact.observations %}
+
+                    <div class="message-list">
+
+                        {% for observation in impact.observations %}
+
+                            <div class="message message-observation">
+                                {{ observation }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% else %}
+
+                    <div class="empty-state">
+                        No observations were generated.
+                    </div>
+
+                {% endif %}
+
+            </article>
+
+
+            <article class="report-card">
+
+                <h2>
+                    Referencing Enforcement Policies
+                </h2>
+
+                {% if impact.direct_dependencies.enforcement_policies %}
+
+                    <div class="object-list">
+
+                        {% for policy in impact.direct_dependencies.enforcement_policies %}
+
+                            <div class="object-item">
+
+                                <div class="object-name">
+                                    {{ policy.name }}
+                                </div>
+
+                                {% if policy.id %}
+
+                                    <div class="object-meta">
+
+                                        Policy ID:
+                                        {{ policy.id }}
+
+                                    </div>
+
+                                {% endif %}
+
+                                {% if policy.description %}
+
+                                    <div class="object-meta">
+                                        {{ policy.description }}
+                                    </div>
+
+                                {% endif %}
+
+                                {% if policy.services %}
+
+                                    <div class="service-list">
+
+                                        {% for service in policy.services %}
+
+                                            <span class="service-chip">
+                                                {{ service.name }}
+                                            </span>
+
+                                        {% endfor %}
+
+                                    </div>
+
+                                {% endif %}
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% else %}
+
+                    <div class="empty-state">
+
+                        No Enforcement Policy references were
+                        found in the available Visualiser data.
+
+                    </div>
+
+                {% endif %}
+
+            </article>
+
+
+            <article class="report-card">
+
+                <h2>
+                    Affected Services
+                </h2>
+
+                {% if impact.extended_impact.services %}
+
+                    <div class="object-list">
+
+                        {% for service in impact.extended_impact.services %}
+
+                            <div class="object-item">
+
+                                <div class="object-name">
+
+                                    {% if service.id %}
+
+                                        <a
+                                            href="{{ url_for(
+                                                'service',
+                                                id=service.id
+                                            ) }}"
+                                            style="
+                                                color: #ffffff;
+                                                text-decoration: underline;
+                                                text-decoration-color: var(--hpe-green);
+                                                text-underline-offset: 3px;
+                                            "
+                                        >
+                                            {{ service.name }}
+                                        </a>
+
+                                    {% else %}
+
+                                        {{ service.name }}
+
+                                    {% endif %}
+
+                                </div>
+
+                                <div class="object-meta">
+
+                                    Service ID:
+                                    {{ service.id or "Not available" }}
+
+                                </div>
+
+                                {% if service.description %}
+
+                                    <div class="object-meta">
+                                        {{ service.description }}
+                                    </div>
+
+                                {% endif %}
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% else %}
+
+                    <div class="empty-state">
+
+                        {% if impact.summary.affected_policy_count == 1 %}
+
+                            The referencing Enforcement Policy is not
+                            currently assigned to any discovered
+                            ClearPass Service.
+
+                        {% elif impact.summary.affected_policy_count > 1 %}
+
+                            The referencing Enforcement Policies are not
+                            currently assigned to any discovered
+                            ClearPass Service.
+
+                        {% else %}
+
+                            No affected Services were found.
+
+                        {% endif %}
+
+                    </div>
+
+                {% endif %}
+
+            </article>
+
+
+            <article class="report-card full-width">
+
+                <h2>
+                    Enforcement Attributes
+                </h2>
+
+                {% if impact.object.attributes %}
+
+                    <table class="attribute-table">
+
+                        <thead>
+
+                            <tr>
+                                <th>Type</th>
+                                <th>Name</th>
+                                <th>Value</th>
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for attribute in impact.object.attributes %}
+
+                                <tr>
+
+                                    <td>
+                                        {{ attribute.type or "Not available" }}
+                                    </td>
+
+                                    <td>
+                                        {{ attribute.name or "Not available" }}
+                                    </td>
+
+                                    <td>
+                                        {{ attribute.value or "Not configured" }}
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                {% else %}
+
+                    <div class="empty-state">
+                        No Enforcement Attributes were found.
+                    </div>
+
+                {% endif %}
+
+            </article>
+
+
+            {% if impact.warnings %}
+
+                <article class="report-card full-width">
+
+                    <h2>
+                        Data Availability
+                    </h2>
+
+                    <div class="message-list">
+
+                        {% for warning in impact.warnings %}
+
+                            <div class="message message-warning">
+                                {{ warning }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </article>
+
+            {% endif %}
+
+        </section>
+
+
+        <footer class="footer">
+
+            ClearPass Policy Visualiser
+            {% if version %}
+                v{{ version }}
+            {% endif %}
+
+            · Read-only impact analysis
+
+        </footer>
+
+    </main>
+
+</body>
+
+</html>

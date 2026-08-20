@@ -307,12 +307,15 @@ Visualise complete ClearPass service flows including:
 Interactive graph features include:
 
 - Zoom and pan
-- Fit graph
-- Centre graph
+- Fit and Centre graph
 - Reset layout
+- Expandable and collapsible policy branches
 - Node search
-- Previous / Next search navigation
+- Previous and Next search navigation
+- Contextual object information
+- Direct Impact Analysis links from Enforcement Profile nodes
 - PNG, JPG and SVG export
+
 
 Unused Enforcement Policies and Role Mapping Policies can also be opened directly from the Unused Objects view and displayed using the policy graph.
 
@@ -326,6 +329,36 @@ Features include:
 - Repository search
 - Endpoint drill-down navigation
 - Rule condition analysis
+
+### Enforcement Profile Impact Analysis
+
+ClearPass Policy Visualiser provides read-only dependency impact reporting for Enforcement Profiles.
+
+Impact Analysis includes:
+
+- Referenced and unreferenced usage classification
+- Total affected Enforcement Policy count
+- Total affected Service count
+- Enforcement Profile ID, type, action and description
+- Enforcement Profile attribute reporting
+- Referencing Enforcement Policy names and IDs
+- Enforcement Policy descriptions, where configured
+- Policy-to-Service dependency relationships
+- Deduplicated affected Service inventory
+- Service IDs and direct navigation links
+- Objective operational impact observations
+- Support for rule-applied Enforcement Profiles
+- Support for default Enforcement Profiles
+- Support for system-defined Enforcement Profiles
+- Dependency discovery for Enforcement Policies not currently assigned to a Service
+- Direct Impact Analysis access from Enforcement Profile graph nodes
+- Separate-tab report workflow that preserves the current graph state
+
+Impact Analysis distinguishes between:
+
+- Enforcement Profiles that are not referenced by any Enforcement Policy
+- Enforcement Profiles referenced only by policies that are not assigned to a Service
+- Enforcement Profiles referenced by policies used across one or more Services
 
 ### Endpoint Profiling
 
@@ -827,15 +860,54 @@ These figures are observations from the reference environment and are not guaran
 Planned enhancements include:
 
 - Administrator-only connection configuration page
+- Expanded Impact Analysis for Enforcement Policies, Role Mapping Policies and Roles
 - Secure validation and update of saved ClearPass, RADIUS and PostgreSQL connection settings
 - Enhanced role-based authorisation controls
-- Impact analysis reporting
 - Standalone packaged release
 - Multi-server ClearPass support
 
 ---
 
 ## Changelog
+
+### v1.4.0
+
+#### Enforcement Profile Impact Analysis
+
+- Added read-only Impact Analysis reports for Enforcement Profiles
+- Added referenced and unreferenced usage classification
+- Added total affected Enforcement Policy and Service counts
+- Added complete Enforcement Profile metadata and attribute reporting
+- Added referencing Enforcement Policy names, IDs and descriptions
+- Added policy-to-Service dependency relationship reporting
+- Added deduplicated affected Service inventories
+- Added Service IDs and direct Service navigation
+- Added objective operational impact observations
+- Added support for rule-applied Enforcement Profiles
+- Added support for default Enforcement Profiles
+- Added support for system-defined Enforcement Profiles
+- Added direct Impact Analysis links to Enforcement Profile graph nodes
+- Added a separate-tab report workflow to preserve graph zoom, layout, branch expansion and selection state
+- Added a responsive Impact Analysis report interface
+
+#### Dependency Analysis
+
+- Expanded the Enforcement Profile reference cache to inspect all Enforcement Policies
+- Added paginated retrieval of Enforcement Policies from ClearPass
+- Added dependency discovery for Enforcement Policies not assigned to a Service
+- Distinguished profiles referenced by unused policies from completely unreferenced profiles
+- Preserved policy IDs and descriptions in the Enforcement Profile reference cache
+- Preserved Service IDs and policy-to-Service relationships
+- Added deduplication of policy and Service references
+- Preserved existing dependency results for Service-assigned Enforcement Policies
+
+#### Graph Integration
+
+- Added a dedicated `profile_name` data field to Enforcement Profile graph nodes
+- Added Impact Analysis access for rule-applied Enforcement Profile nodes
+- Added Impact Analysis access for default Enforcement Profile nodes
+- Added Impact Analysis access from Service and standalone Enforcement Policy graphs
+- Added secure new-tab navigation for Impact Analysis reports
 
 ### v1.3.1
 
@@ -992,6 +1064,6 @@ Always validate configuration changes before applying them to production environ
 
 ---
 
-**ClearPass Policy Visualiser v1.3.1**
+**ClearPass Policy Visualiser v1.4.0**
 
 Visualise. Analyse. Troubleshoot.

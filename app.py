@@ -36,6 +36,9 @@ from cp_object_graph import (
     build_enforcement_policy_graph,
     build_role_mapping_graph,
 )
+from cp_impact_analysis import (
+    analyse_enforcement_profile,
+)
 
 import cp_cache
 
@@ -1623,17 +1626,232 @@ def object_policy(name):
         graph=graph,
     )
 
+def get_profile_impact_references(
+    profile_name,
+):
+    """
+    Return cached Enforcement Policy and Service references
+    for an Enforcement Profile.
+
+    Exact name matching is attempted first, followed by a
+    case-insensitive fallback.
+    """
+
+    cache = (
+        cp_cache.profile_reference_cache
+        or {}
+    )
+
+    references = cache.get(
+        profile_name
+    )
+
+    if references is None:
+
+        requested_name = str(
+            profile_name
+        ).strip().casefold()
+
+        for cached_name, cached_data in cache.items():
+
+            cached_name_normalised = str(
+                cached_name
+            ).strip().casefold()
+
+            if (
+                cached_name_normalised
+                ==
+                requested_name
+            ):
+
+                references = cached_data
+                break
+
+    if not isinstance(
+        references,
+        dict,
+    ):
+
+        references = {}
+
+    policies = references.get(
+        "policies",
+        [],
+    )
+
+    services = references.get(
+        "services",
+        [],
+    )
+
+    if not isinstance(
+        policies,
+        list,
+    ):
+
+        policies = []
+
+    if not isinstance(
+        services,
+        list,
+    ):
+
+        services = []
+
+    return {
+        "cache_available": bool(
+            cache
+        ),
+        "policies": policies,
+        "services": services,
+    }
+
 
 @app.route("/object/profile/<path:name>")
 @login_required
 def object_profile(name):
-    profile = get_enforcement_profile(name)
+
+    try:
+
+        profile = get_enforcement_profile(
+            name
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Unable to retrieve Enforcement Profile: %s",
+            name,
+        )
+
+        return (
+            "Unable to retrieve Enforcement Profile",
+            500,
+        )
+
+    if not isinstance(
+        profile,
+        dict,
+    ):
+
+        return (
+            "Enforcement Profile not found",
+            404,
+        )
 
     return render_template(
         "enforcement_profile_detail.html",
         profile=profile,
+        version=VERSION,
     )
 
+@app.route(
+    "/impact-analysis/enforcement-profile/"
+    "<path:name>"
+)
+@login_required
+def enforcement_profile_impact_analysis(
+    name,
+):
+    """
+    Display read-only impact analysis for an
+    Enforcement Profile.
+    """
+
+    try:
+
+        profile = get_enforcement_profile(
+            name
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Unable to retrieve Enforcement Profile "
+            "for impact analysis: %s",
+            name,
+        )
+
+        return (
+            "Unable to retrieve Enforcement Profile "
+            "for impact analysis",
+            500,
+        )
+
+    if not isinstance(
+        profile,
+        dict,
+    ):
+
+        return (
+            "Enforcement Profile not found",
+            404,
+        )
+
+    profile_name = (
+        profile.get(
+            "name"
+        )
+        or name
+    )
+
+    references = (
+        get_profile_impact_references(
+            profile_name
+        )
+    )
+
+    if not references[
+        "cache_available"
+    ]:
+
+        logger.warning(
+            "Enforcement Profile reference cache is "
+            "unavailable for impact analysis: %s",
+            profile_name,
+        )
+
+    if references[
+        "cache_available"
+    ]:
+
+        policy_references = references[
+            "policies"
+        ]
+
+        service_references = references[
+            "services"
+        ]
+
+    else:
+
+        policy_references = None
+        service_references = None
+
+
+    impact = analyse_enforcement_profile(
+        profile,
+        policy_references=policy_references,
+        service_references=service_references,
+    )
+
+    logger.info(
+        "Impact analysis generated for Enforcement "
+        "Profile '%s': %s policies, %s services",
+        profile_name,
+        impact["summary"][
+            "affected_policy_count"
+        ],
+        impact["summary"][
+            "affected_service_count"
+        ],
+    )
+
+    return render_template(
+        "impact_analysis.html",
+        impact=impact,
+        version=VERSION,
+    )
 
 if __name__ == "__main__":
     if is_setup_complete(log_missing=True):
