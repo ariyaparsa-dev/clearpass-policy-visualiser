@@ -271,6 +271,142 @@
     	background: #233046 !important;
 	}
 
+    .impact-lookup-card {
+        position: relative;
+        margin-bottom: 24px;
+        overflow: visible;
+    }
+
+    .impact-lookup-body {
+        padding: 16px;
+    }
+
+    .impact-lookup-grid {
+        display: grid;
+        grid-template-columns: minmax(180px, 0.24fr) minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 12px;
+    }
+
+    .impact-lookup-field {
+        position: relative;
+        min-width: 0;
+    }
+
+    .impact-lookup-label {
+        display: block;
+        margin-bottom: 6px;
+        color: #9CA3AF;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .impact-lookup-select,
+    .impact-lookup-input {
+        width: 100%;
+        min-height: 42px;
+        background: #111827;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        color: #FFFFFF;
+        padding: 8px 11px;
+    }
+
+    .impact-lookup-select:focus,
+    .impact-lookup-input:focus {
+        outline: none;
+        border-color: var(--hpe-green);
+        box-shadow: 0 0 0 .25rem rgba(1, 169, 130, .20);
+    }
+
+    .impact-lookup-button {
+        min-height: 42px;
+        white-space: nowrap;
+    }
+
+    .impact-lookup-results {
+        position: absolute;
+        z-index: 2000;
+        top: calc(100% + 6px);
+        right: 0;
+        left: 0;
+        display: none;
+        max-height: 360px;
+        overflow-y: auto;
+        background: #111827;
+        border: 1px solid #475569;
+        border-radius: 8px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
+    }
+
+    .impact-lookup-results.show {
+        display: block;
+    }
+
+    .impact-lookup-result {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        width: 100%;
+        padding: 10px 12px;
+        background: transparent;
+        border: 0;
+        border-bottom: 1px solid #273449;
+        color: #E2E8F0;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .impact-lookup-result:last-child {
+        border-bottom: 0;
+    }
+
+    .impact-lookup-result:hover,
+    .impact-lookup-result:focus,
+    .impact-lookup-result.active {
+        outline: none;
+        background: #233046;
+    }
+
+    .impact-lookup-result-name {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .impact-lookup-type {
+        flex-shrink: 0;
+        padding: 4px 7px;
+        border: 1px solid #01A982;
+        border-radius: 999px;
+        color: #8FEFCF;
+        font-size: 0.68rem;
+        font-weight: 700;
+    }
+
+    .impact-lookup-message {
+        padding: 12px;
+        color: #9CA3AF;
+        font-size: 0.82rem;
+    }
+
+    .impact-lookup-help {
+        margin-top: 8px;
+        color: #9CA3AF;
+        font-size: 0.75rem;
+    }
+
+    @media (max-width: 850px) {
+        .impact-lookup-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .impact-lookup-button {
+            width: 100%;
+        }
+    }
 
 
     </style>
@@ -509,6 +645,94 @@
 
     </div>
 
+    <!-- Impact Analysis Lookup -->
+    <div class="main-card impact-lookup-card">
+
+        <div class="card-header-custom">
+            <h5 class="mb-0">
+                Impact Analysis Lookup
+            </h5>
+        </div>
+
+        <div class="impact-lookup-body">
+
+            <div class="impact-lookup-grid">
+
+                <div class="impact-lookup-field">
+
+                    <label
+                        class="impact-lookup-label"
+                        for="impactLookupType"
+                    >
+                        Object Type
+                    </label>
+
+                    <select
+                        id="impactLookupType"
+                        class="impact-lookup-select"
+                    >
+                        <option value="all">All Types</option>
+                        <option value="enforcement_profile">
+                            Enforcement Profiles
+                        </option>
+                        <option value="enforcement_policy">
+                            Enforcement Policies
+                        </option>
+                        <option value="role_mapping_policy">
+                            Role Mapping Policies
+                        </option>
+                    </select>
+
+                </div>
+
+                <div class="impact-lookup-field">
+
+                    <label
+                        class="impact-lookup-label"
+                        for="impactLookupInput"
+                    >
+                        Object Name
+                    </label>
+
+                    <input
+                        id="impactLookupInput"
+                        class="impact-lookup-input"
+                        type="search"
+                        autocomplete="off"
+                        placeholder="Search profiles, enforcement policies and role mapping policies..."
+                        aria-autocomplete="list"
+                        aria-controls="impactLookupResults"
+                        aria-expanded="false"
+                    >
+
+                    <div
+                        id="impactLookupResults"
+                        class="impact-lookup-results"
+                        role="listbox"
+                    ></div>
+
+                </div>
+
+                <button
+                    id="impactLookupOpen"
+                    class="btn btn-outline-success impact-lookup-button"
+                    type="button"
+                    disabled
+                >
+                    Open Impact Analysis
+                </button>
+
+            </div>
+
+            <div class="impact-lookup-help">
+                Enter at least two characters, then select an object.
+                Reports open in a new tab.
+            </div>
+
+        </div>
+
+    </div>
+
 
 </div>
 
@@ -729,6 +953,319 @@
 </div>
 
 <script>
+
+const impactLookupInput =
+    document.getElementById("impactLookupInput");
+
+const impactLookupType =
+    document.getElementById("impactLookupType");
+
+const impactLookupResults =
+    document.getElementById("impactLookupResults");
+
+const impactLookupOpen =
+    document.getElementById("impactLookupOpen");
+
+let impactLookupItems = [];
+let impactLookupSelectedIndex = -1;
+let impactLookupSelectedItem = null;
+let impactLookupRequestId = 0;
+
+function closeImpactLookupResults() {
+
+    impactLookupResults.classList.remove("show");
+    impactLookupInput.setAttribute("aria-expanded", "false");
+    impactLookupSelectedIndex = -1;
+
+}
+
+function clearImpactLookupSelection() {
+
+    impactLookupSelectedItem = null;
+    impactLookupOpen.disabled = true;
+
+}
+
+function selectImpactLookupItem(item) {
+
+    impactLookupSelectedItem = item;
+    impactLookupInput.value = item.name;
+    impactLookupOpen.disabled = false;
+    closeImpactLookupResults();
+
+}
+
+function openImpactLookupItem() {
+
+    if (
+        !impactLookupSelectedItem
+        ||
+        !impactLookupSelectedItem.url
+    ) {
+        return;
+    }
+
+    window.open(
+        impactLookupSelectedItem.url,
+        "_blank",
+        "noopener,noreferrer"
+    );
+
+}
+
+function setImpactLookupActiveIndex(index) {
+
+    const resultButtons =
+        impactLookupResults.querySelectorAll(
+            ".impact-lookup-result"
+        );
+
+    resultButtons.forEach(function (button) {
+        button.classList.remove("active");
+    });
+
+    if (
+        index < 0
+        ||
+        index >= resultButtons.length
+    ) {
+        impactLookupSelectedIndex = -1;
+        return;
+    }
+
+    impactLookupSelectedIndex = index;
+
+    const activeButton = resultButtons[index];
+    activeButton.classList.add("active");
+    activeButton.scrollIntoView({
+        block: "nearest"
+    });
+
+}
+
+function renderImpactLookupResults(data) {
+
+    impactLookupResults.innerHTML = "";
+    impactLookupItems = Array.isArray(data.results)
+        ? data.results
+        : [];
+
+    impactLookupSelectedIndex = -1;
+
+    if (impactLookupItems.length === 0) {
+
+        const message = document.createElement("div");
+        message.className = "impact-lookup-message";
+        message.textContent = "No matching policy objects found.";
+        impactLookupResults.appendChild(message);
+        impactLookupResults.classList.add("show");
+        impactLookupInput.setAttribute("aria-expanded", "true");
+        return;
+
+    }
+
+    impactLookupItems.forEach(function (item, index) {
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "impact-lookup-result";
+        button.setAttribute("role", "option");
+
+        const name = document.createElement("span");
+        name.className = "impact-lookup-result-name";
+        name.textContent = item.name;
+
+        const type = document.createElement("span");
+        type.className = "impact-lookup-type";
+        type.textContent = item.type_label;
+
+        button.appendChild(name);
+        button.appendChild(type);
+
+        button.addEventListener("click", function () {
+            selectImpactLookupItem(item);
+        });
+
+        button.addEventListener("dblclick", function () {
+            selectImpactLookupItem(item);
+            openImpactLookupItem();
+        });
+
+        button.dataset.index = String(index);
+        impactLookupResults.appendChild(button);
+
+    });
+
+    impactLookupResults.classList.add("show");
+    impactLookupInput.setAttribute("aria-expanded", "true");
+
+}
+
+async function searchImpactAnalysisObjects() {
+
+    const query = impactLookupInput.value.trim();
+
+    clearImpactLookupSelection();
+
+    if (query.length < 2) {
+        impactLookupResults.innerHTML = "";
+        closeImpactLookupResults();
+        return;
+    }
+
+    const requestId = ++impactLookupRequestId;
+
+    const parameters = new URLSearchParams({
+        q: query,
+        type: impactLookupType.value
+    });
+
+    try {
+
+        const response = await fetch(
+            `/api/impact-analysis/lookup?${parameters.toString()}`,
+            {
+                headers: {
+                    "Accept": "application/json"
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Lookup request failed");
+        }
+
+        const data = await response.json();
+
+        if (requestId !== impactLookupRequestId) {
+            return;
+        }
+
+        renderImpactLookupResults(data);
+
+    } catch (error) {
+
+        if (requestId !== impactLookupRequestId) {
+            return;
+        }
+
+        impactLookupResults.innerHTML = "";
+
+        const message = document.createElement("div");
+        message.className = "impact-lookup-message";
+        message.textContent = "Impact Analysis lookup is unavailable.";
+        impactLookupResults.appendChild(message);
+        impactLookupResults.classList.add("show");
+        impactLookupInput.setAttribute("aria-expanded", "true");
+
+        console.error(error);
+
+    }
+
+}
+
+let impactLookupTimer = null;
+
+impactLookupInput.addEventListener("input", function () {
+
+    window.clearTimeout(impactLookupTimer);
+
+    impactLookupTimer = window.setTimeout(
+        searchImpactAnalysisObjects,
+        180
+    );
+
+});
+
+impactLookupType.addEventListener(
+    "change",
+    function () {
+
+        impactLookupRequestId += 1;
+
+        impactLookupInput.value = "";
+
+        impactLookupItems = [];
+
+        impactLookupSelectedIndex = -1;
+
+        clearImpactLookupSelection();
+
+        impactLookupResults.innerHTML = "";
+
+        closeImpactLookupResults();
+
+        impactLookupInput.focus();
+
+    }
+);
+
+impactLookupInput.addEventListener("keydown", function (event) {
+
+    if (!impactLookupResults.classList.contains("show")) {
+        return;
+    }
+
+    if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setImpactLookupActiveIndex(
+            Math.min(
+                impactLookupSelectedIndex + 1,
+                impactLookupItems.length - 1
+            )
+        );
+    }
+
+    if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setImpactLookupActiveIndex(
+            Math.max(
+                impactLookupSelectedIndex - 1,
+                0
+            )
+        );
+    }
+
+    if (event.key === "Enter") {
+        event.preventDefault();
+
+        if (impactLookupSelectedIndex >= 0) {
+            selectImpactLookupItem(
+                impactLookupItems[
+                    impactLookupSelectedIndex
+                ]
+            );
+            return;
+        }
+
+        if (impactLookupSelectedItem) {
+            openImpactLookupItem();
+        }
+    }
+
+    if (event.key === "Escape") {
+        closeImpactLookupResults();
+    }
+
+});
+
+impactLookupOpen.addEventListener(
+    "click",
+    openImpactLookupItem
+);
+
+document.addEventListener("click", function (event) {
+
+    if (
+        !event.target.closest(".impact-lookup-field")
+        &&
+        event.target !== impactLookupOpen
+    ) {
+        closeImpactLookupResults();
+    }
+
+});
+
 
 document.getElementById("serviceSearch")
     .addEventListener("keyup", function() {

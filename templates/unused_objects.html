@@ -150,6 +150,85 @@
             opacity: 1;
         }
 
+        .info-tooltip {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 6px;
+            width: 17px;
+            height: 17px;
+            border: 1px solid #01A982;
+            border-radius: 50%;
+            color: #01A982;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
+            cursor: help;
+            vertical-align: middle;
+        }
+
+
+        .info-tooltip-text {
+            position: absolute;
+            z-index: 1000;
+            left: 50%;
+            bottom: calc(100% + 10px);
+            width: 310px;
+            padding: 10px 12px;
+            transform: translateX(-50%);
+            background: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 7px;
+            color: #e2e8f0;
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 1.5;
+            text-align: left;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transition:
+                opacity 0.15s ease,
+                visibility 0.15s ease;
+        }
+
+
+        .info-tooltip-text::after {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            border: 6px solid transparent;
+            border-top-color: #475569;
+            transform: translateX(-50%);
+            content: "";
+        }
+
+
+        .info-tooltip:hover .info-tooltip-text,
+        .info-tooltip:focus .info-tooltip-text,
+        .info-tooltip:focus-within .info-tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+
+        @media (max-width: 650px) {
+
+            .info-tooltip-text {
+                left: 0;
+                width: min(280px, calc(100vw - 40px));
+                transform: none;
+            }
+
+
+            .info-tooltip-text::after {
+                left: 8px;
+                transform: none;
+            }
+
+        }
+
     </style>
 
 </head>
@@ -207,7 +286,34 @@
 
         <div class="col-xl-3 col-lg-6 mb-3">
             <div class="summary-card">
-                <div>Enforcement Profiles</div>
+                <div class="summary-label">
+
+                    Enforcement Profiles
+
+                    <span
+                        class="info-tooltip"
+                        tabindex="0"
+                        role="button"
+                        aria-label="
+                            Information about unused Enforcement Profile
+                            classification
+                        "
+                    >
+                        i
+
+                        <span
+                            class="info-tooltip-text"
+                            role="tooltip"
+                        >
+                            Only Enforcement Profiles with no Enforcement
+                            Policy references are counted here. Profiles
+                            referenced by Enforcement Policies that are not
+                            assigned to a Service are excluded.
+                        </span>
+
+                    </span>
+
+                </div>
                 <div class="summary-number">
                     {{ unused.profiles.unused_count }}
                 </div>

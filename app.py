@@ -37,7 +37,13 @@ from cp_object_graph import (
     build_role_mapping_graph,
 )
 from cp_impact_analysis import (
+    analyse_enforcement_policy,
     analyse_enforcement_profile,
+    analyse_role_mapping_policy,
+)
+
+from cp_impact_lookup import (
+    build_impact_analysis_lookup_cache,
 )
 
 import cp_cache
@@ -55,12 +61,15 @@ from cp_endpoint import (
     get_matching_repository_objects,
     preload_endpoint_data,
 )
+
 from cp_enforcement import (
     ENFORCEMENT_POLICY_CACHE,
     PROFILE_CACHE,
     build_profile_reference_cache,
+    get_enforcement_details,
     get_enforcement_profile,
 )
+
 from cp_graph import build_service_graph
 from cp_health import check_clearpass
 from cp_role_mapping import (
@@ -68,6 +77,7 @@ from cp_role_mapping import (
     ROLE_MAPPING_CACHE,
     build_role_cache,
     build_role_mapping_reference_cache,
+    get_role_mapping_details,
 )
 from cp_services import get_all_services, get_service
 from version import VERSION
@@ -1267,6 +1277,230 @@ def home():
         version=VERSION,
     )
 
+@app.route(
+    "/api/impact-analysis/lookup"
+)
+@login_required
+def impact_analysis_lookup():
+    """
+    Search the cached Impact Analysis object inventory.
+    """
+
+    search_text = str(
+        request.args.get(
+            "q",
+            ""
+        )
+    ).strip()
+
+    object_type = str(
+        request.args.get(
+            "type",
+            "all"
+        )
+    ).strip()
+
+    valid_types = {
+        "all",
+        "enforcement_profile",
+        "enforcement_policy",
+        "role_mapping_policy",
+    }
+
+    if object_type not in valid_types:
+
+        return jsonify(
+            {
+                "results": [],
+                "error": (
+                    "Invalid Impact Analysis object type."
+                ),
+            }
+        ), 400
+
+    if len(search_text) < 2:
+
+        return jsonify(
+            {
+                "results": [],
+            }
+        )
+
+    search_text_normalised = (
+        search_text.casefold()
+    )
+
+    lookup_cache = (
+        cp_cache
+        .impact_analysis_lookup_cache
+        or []
+    )
+
+    matching_entries = []
+
+    for entry in lookup_cache:
+
+        if not isinstance(
+            entry,
+            dict,
+        ):
+
+            continue
+
+        entry_type = str(
+            entry.get(
+                "type",
+                ""
+            )
+        ).strip()
+
+        if (
+            object_type != "all"
+            and
+            entry_type != object_type
+        ):
+
+            continue
+
+        entry_name = str(
+            entry.get(
+                "name",
+                ""
+            )
+        ).strip()
+
+        if not entry_name:
+            continue
+
+        entry_name_normalised = (
+            entry_name.casefold()
+        )
+
+        if (
+            search_text_normalised
+            not in entry_name_normalised
+        ):
+
+            continue
+
+        match_priority = 2
+
+        if (
+            entry_name_normalised
+            ==
+            search_text_normalised
+        ):
+
+            match_priority = 0
+
+        elif entry_name_normalised.startswith(
+            search_text_normalised
+        ):
+
+            match_priority = 1
+
+        matching_entries.append(
+            {
+                "name": entry_name,
+                "type": entry_type,
+                "type_label": str(
+                    entry.get(
+                        "type_label",
+                        ""
+                    )
+                ).strip(),
+                "match_priority": (
+                    match_priority
+                ),
+            }
+        )
+
+    matching_entries = sorted(
+        matching_entries,
+        key=lambda entry: (
+            entry[
+                "match_priority"
+            ],
+            entry[
+                "name"
+            ].casefold(),
+            entry[
+                "type_label"
+            ].casefold(),
+        ),
+    )
+
+    results = []
+
+    for entry in matching_entries[
+        :20
+    ]:
+
+        entry_type = entry[
+            "type"
+        ]
+
+        entry_name = entry[
+            "name"
+        ]
+
+        if (
+            entry_type
+            ==
+            "enforcement_profile"
+        ):
+
+            impact_url = url_for(
+                "enforcement_profile_impact_analysis",
+                name=entry_name,
+            )
+
+        elif (
+            entry_type
+            ==
+            "enforcement_policy"
+        ):
+
+            impact_url = url_for(
+                "enforcement_policy_impact_analysis",
+                name=entry_name,
+            )
+
+        elif (
+            entry_type
+            ==
+            "role_mapping_policy"
+        ):
+
+            impact_url = url_for(
+                "role_mapping_policy_impact_analysis",
+                name=entry_name,
+            )
+
+        else:
+
+            continue
+
+        results.append(
+            {
+                "name": entry_name,
+                "type": entry_type,
+                "type_label": entry[
+                    "type_label"
+                ],
+                "url": impact_url,
+            }
+        )
+
+    return jsonify(
+        {
+            "results": results,
+            "total_matches": len(
+                matching_entries
+            ),
+            "result_limit": 20,
+        }
+    )
 
 @app.route("/refresh-cache")
 @login_required
@@ -1277,7 +1511,10 @@ def refresh_cache():
 
     cp_cache.services_cache = []
     cp_cache.profile_reference_cache = {}
+    cp_cache.role_mapping_reference_cache = {}
+    cp_cache.policy_reference_cache = {}
     cp_cache.role_cache = {}
+    cp_cache.impact_analysis_lookup_cache = []
 
     cp_cache.health_cache = check_clearpass()
     cp_cache.health_cache_time = time.time()
@@ -1337,6 +1574,21 @@ def refresh_cache():
 
     cp_cache.unused_objects_cache = (
         get_unused_object_summary()
+    )
+
+    logger.info(
+        "Building Impact Analysis Lookup Cache..."
+    )
+
+    cp_cache.impact_analysis_lookup_cache = (
+        build_impact_analysis_lookup_cache()
+    )
+
+    logger.info(
+        "Impact Analysis lookup objects cached: %s",
+        len(
+            cp_cache.impact_analysis_lookup_cache
+        ),
     )
 
     logger.info(
@@ -1449,8 +1701,24 @@ def initialise_cache():
     )
 
     logger.info(
+        "Building Impact Analysis Lookup Cache..."
+    )
+
+    cp_cache.impact_analysis_lookup_cache = (
+        build_impact_analysis_lookup_cache()
+    )
+
+    logger.info(
+        "Impact Analysis lookup objects cached: %s",
+        len(
+            cp_cache.impact_analysis_lookup_cache
+        ),
+    )
+
+    logger.info(
         "Cache initialisation complete."
     )
+
     logger.info(
         "Services: %s",
         len(cp_cache.services_cache),
@@ -1463,6 +1731,14 @@ def initialise_cache():
         "Enforcement Profiles: %s",
         len(cp_cache.profile_reference_cache),
     )
+
+    logger.info(
+        "Impact Analysis lookup objects: %s",
+        len(
+            cp_cache.impact_analysis_lookup_cache
+        ),
+    )
+
     logger.info(
         "Last Refresh: %s",
         cp_cache.last_refresh,
@@ -1616,7 +1892,9 @@ def unused_objects():
 @app.route("/object/policy/<path:name>")
 @login_required
 def object_policy(name):
-    graph = build_enforcement_policy_graph(name)
+    graph = build_enforcement_policy_graph(
+        name
+    )
 
     return render_template(
         "object_detail.html",
@@ -1625,6 +1903,180 @@ def object_policy(name):
         graph_kind="policy",
         graph=graph,
     )
+
+
+def get_policy_impact_services(
+    policy_name,
+):
+    """
+    Return cached Services that assign the selected
+    Enforcement Policy.
+
+    Exact policy-name matching is attempted first, followed
+    by a case-insensitive comparison.
+    """
+
+    services_cache = (
+        cp_cache.services_cache
+        or []
+    )
+
+    requested_policy_name = str(
+        policy_name
+    ).strip()
+
+    requested_policy_name_normalised = (
+        requested_policy_name.casefold()
+    )
+
+    matching_services = []
+
+    for service_data in services_cache:
+
+        if not isinstance(
+            service_data,
+            dict,
+        ):
+
+            continue
+
+        service_name = str(
+            service_data.get(
+                "name",
+                ""
+            )
+        ).strip()
+
+        if service_name.startswith(
+            "--------"
+        ):
+
+            continue
+
+        assigned_policy_name = str(
+            service_data.get(
+                "enf_policy",
+                ""
+            )
+        ).strip()
+
+        if not assigned_policy_name:
+            continue
+
+        if (
+            assigned_policy_name
+            ==
+            requested_policy_name
+        ):
+
+            matching_services.append(
+                service_data
+            )
+
+            continue
+
+        if (
+            assigned_policy_name.casefold()
+            ==
+            requested_policy_name_normalised
+        ):
+
+            matching_services.append(
+                service_data
+            )
+
+    matching_services = sorted(
+        matching_services,
+        key=lambda service_data: (
+            str(
+                service_data.get(
+                    "name",
+                    ""
+                )
+            ).casefold()
+        ),
+    )
+
+    return {
+        "cache_available": bool(
+            services_cache
+        ),
+        "services": matching_services,
+    }
+
+def get_role_mapping_impact_services(
+    policy_name,
+):
+    """
+    Return cached Services that assign the selected
+    Role Mapping Policy.
+
+    Exact policy-name matching is attempted first,
+    followed by a case-insensitive comparison.
+    """
+
+    reference_cache = (
+        cp_cache.role_mapping_reference_cache
+        or {}
+    )
+
+    service_references = (
+        reference_cache.get(
+            policy_name
+        )
+    )
+
+    if service_references is None:
+
+        requested_name = str(
+            policy_name
+        ).strip().casefold()
+
+        for cached_name, cached_services in (
+            reference_cache.items()
+        ):
+
+            cached_name_normalised = str(
+                cached_name
+            ).strip().casefold()
+
+            if (
+                cached_name_normalised
+                ==
+                requested_name
+            ):
+
+                service_references = (
+                    cached_services
+                )
+
+                break
+
+    if not isinstance(
+        service_references,
+        list,
+    ):
+
+        service_references = []
+
+    service_references = sorted(
+        service_references,
+        key=lambda service: (
+            str(
+                service.get(
+                    "name",
+                    ""
+                )
+            ).casefold()
+        ),
+    )
+
+    return {
+        "cache_available": bool(
+            reference_cache
+        ),
+        "services": service_references,
+    }
 
 def get_profile_impact_references(
     profile_name,
@@ -1852,6 +2304,251 @@ def enforcement_profile_impact_analysis(
         impact=impact,
         version=VERSION,
     )
+
+@app.route(
+    "/impact-analysis/enforcement-policy/"
+    "<path:name>"
+)
+@login_required
+def enforcement_policy_impact_analysis(
+    name,
+):
+    """
+    Display read-only impact analysis for an
+    Enforcement Policy.
+    """
+
+    try:
+
+        policy = get_enforcement_details(
+            name
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Unable to retrieve Enforcement Policy "
+            "for impact analysis: %s",
+            name,
+        )
+
+        return (
+            "Unable to retrieve Enforcement Policy "
+            "for impact analysis",
+            500,
+        )
+
+    if not isinstance(
+        policy,
+        dict,
+    ):
+
+        return (
+            "Enforcement Policy not found",
+            404,
+        )
+
+    policy_name = (
+        policy.get(
+            "name"
+        )
+        or
+        name
+    )
+
+    service_result = (
+        get_policy_impact_services(
+            policy_name
+        )
+    )
+
+    if service_result[
+        "cache_available"
+    ]:
+
+        service_references = (
+            service_result[
+                "services"
+            ]
+        )
+
+    else:
+
+        service_references = None
+
+        logger.warning(
+            "Service cache is unavailable for "
+            "Enforcement Policy impact analysis: %s",
+            policy_name,
+        )
+
+    default_profile_name = (
+        policy.get(
+            "default_enforcement_profile"
+        )
+    )
+
+    default_profile = None
+
+    if default_profile_name:
+
+        try:
+
+            default_profile = (
+                get_enforcement_profile(
+                    default_profile_name
+                )
+            )
+
+        except Exception:
+
+            logger.warning(
+                "Unable to retrieve default Enforcement "
+                "Profile '%s' for policy '%s'. The report "
+                "will retain the default profile name "
+                "without complete profile metadata.",
+                default_profile_name,
+                policy_name,
+                exc_info=True,
+            )
+
+    impact = analyse_enforcement_policy(
+        policy,
+        service_references=service_references,
+        default_profile=default_profile,
+        profile_reference_cache=(
+            cp_cache.profile_reference_cache
+            or None
+        ),
+    )
+
+    logger.info(
+        "Impact analysis generated for Enforcement "
+        "Policy '%s': %s services, %s rules, "
+        "%s dependent profiles",
+        policy_name,
+        impact["summary"][
+            "affected_service_count"
+        ],
+        impact["summary"][
+            "rule_count"
+        ],
+        impact["summary"][
+            "dependent_profile_count"
+        ],
+    )
+
+    return render_template(
+        "enforcement_policy_impact_analysis.html",
+        impact=impact,
+        version=VERSION,
+    )
+
+
+@app.route(
+    "/impact-analysis/role-mapping-policy/"
+    "<path:name>"
+)
+@login_required
+def role_mapping_policy_impact_analysis(
+    name,
+):
+    """
+    Display read-only impact analysis for a
+    Role Mapping Policy.
+    """
+
+    try:
+
+        policy = get_role_mapping_details(
+            name
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Unable to retrieve Role Mapping Policy "
+            "for impact analysis: %s",
+            name,
+        )
+
+        return (
+            "Unable to retrieve Role Mapping Policy "
+            "for impact analysis",
+            500,
+        )
+
+    if not isinstance(
+        policy,
+        dict,
+    ):
+
+        return (
+            "Role Mapping Policy not found",
+            404,
+        )
+
+    policy_name = (
+        policy.get(
+            "name"
+        )
+        or
+        name
+    )
+
+    service_result = (
+        get_role_mapping_impact_services(
+            policy_name
+        )
+    )
+
+    if service_result[
+        "cache_available"
+    ]:
+
+        service_references = (
+            service_result[
+                "services"
+            ]
+        )
+
+    else:
+
+        service_references = None
+
+        logger.warning(
+            "Role Mapping reference cache is unavailable "
+            "for impact analysis: %s",
+            policy_name,
+        )
+
+    impact = analyse_role_mapping_policy(
+        policy,
+        service_references=service_references,
+    )
+
+    logger.info(
+        "Impact analysis generated for Role Mapping "
+        "Policy '%s': %s services, %s rules, "
+        "%s mapped Roles",
+        policy_name,
+        impact["summary"][
+            "affected_service_count"
+        ],
+        impact["summary"][
+            "rule_count"
+        ],
+        impact["summary"][
+            "mapped_role_count"
+        ],
+    )
+
+    return render_template(
+        "role_mapping_policy_impact_analysis.html",
+        impact=impact,
+        version=VERSION,
+    )
+
 
 if __name__ == "__main__":
     if is_setup_complete(log_missing=True):

@@ -55,6 +55,111 @@ def get_cached_role(role_name):
         {}
     )
 
+def get_all_role_mapping_policies():
+    """
+    Retrieve all Role Mapping Policies from ClearPass.
+
+    Pagination is used so the result is not limited by the
+    ClearPass collection endpoint.
+    """
+
+    login = get_login()
+
+    role_mapping_policies = []
+
+    offset = 0
+    page_size = 100
+    total_count = None
+
+    while True:
+
+        response = (
+            ApiPolicyElements
+            .get_role_mapping(
+                login,
+                offset=offset,
+                limit=page_size,
+                calculate_count="true",
+            )
+        )
+
+        if not isinstance(
+            response,
+            dict,
+        ):
+
+            break
+
+        embedded = response.get(
+            "_embedded",
+            {},
+        )
+
+        if not isinstance(
+            embedded,
+            dict,
+        ):
+
+            break
+
+        items = embedded.get(
+            "items",
+            [],
+        )
+
+        if not isinstance(
+            items,
+            list,
+        ):
+
+            break
+
+        if total_count is None:
+
+            count_value = response.get(
+                "count"
+            )
+
+            try:
+
+                total_count = int(
+                    count_value
+                )
+
+            except (
+                TypeError,
+                ValueError,
+            ):
+
+                total_count = None
+
+        role_mapping_policies.extend(
+            items
+        )
+
+        if not items:
+            break
+
+        offset += len(
+            items
+        )
+
+        if (
+            total_count is not None
+            and
+            offset >= total_count
+        ):
+
+            break
+
+        if len(
+            items
+        ) < page_size:
+
+            break
+
+    return role_mapping_policies
+
 def build_role_mapping_reference_cache():
 
     from cp_services import get_all_services
@@ -138,6 +243,7 @@ def get_role_mapping_details(policy_name):
         )
 
     result = {
+        "id": policy.get("id"),
         "name": policy.get("name"),
         "description": policy.get("description"),
         "default_role_name": policy.get(

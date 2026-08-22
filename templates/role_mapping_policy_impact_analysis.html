@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Role Mapping Policy Impact Analysis - {{ impact.object.name }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+    <style>
+        :root {
+            --hpe-green: #01A982;
+            --background: #0f172a;
+            --navbar: #111827;
+            --card: #1e293b;
+            --card-dark: #111827;
+            --border: #334155;
+            --border-secondary: #475569;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --success: #22c55e;
+            --warning: #facc15;
+            --rule-colour: #0891b2;
+            --default-yellow: #e4b911;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--background);
+            color: var(--text);
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .navbar {
+            padding: 8px 16px;
+            background: var(--navbar);
+            border-bottom: 3px solid var(--hpe-green);
+        }
+
+        .navbar-brand { color: #ffffff; font-size: 20px; line-height: 1.5; }
+        .brand-green { color: var(--hpe-green); font-weight: 700; }
+
+        .content-wrapper {
+            width: min(1400px, calc(100% - 40px));
+            margin: 32px auto;
+        }
+
+        .page-header { margin-bottom: 24px; }
+        .page-title { margin: 0; color: var(--hpe-green); font-size: 30px; }
+        .page-subtitle { margin: 8px 0 0; color: var(--muted); line-height: 1.6; }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .summary-card,
+        .report-card {
+            min-width: 0;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .summary-card { padding: 20px; }
+        .summary-label { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+        .summary-value { margin-top: 10px; color: #ffffff; font-size: 30px; font-weight: 700; overflow-wrap: anywhere; }
+        .status-assigned { color: var(--success); }
+        .status-not-assigned { color: var(--warning); }
+
+        .report-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            align-items: start;
+            gap: 20px;
+        }
+
+        .report-card { padding: 22px; }
+        .report-card.full-width { grid-column: 1 / -1; }
+        .report-card h2 { margin: 0 0 18px; color: #ffffff; font-size: 20px; }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: minmax(165px, .35fr) minmax(0, 1fr);
+            gap: 12px 18px;
+        }
+
+        .detail-label { color: var(--hpe-green); font-size: 13px; font-weight: 700; }
+        .detail-value { min-width: 0; color: var(--text); overflow-wrap: anywhere; }
+
+        .service-object-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+            gap: 12px;
+        }
+
+        .role-object-list {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .object-item {
+            padding: 15px;
+            background: var(--card-dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .object-name { color: #ffffff; font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+        .object-link { color: #ffffff; text-decoration: underline; text-decoration-color: var(--hpe-green); text-underline-offset: 3px; }
+        .object-link:hover, .object-link:focus { color: #8fefcf; }
+        .object-meta { margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+        .reference-chip-list,
+        .role-chip-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+
+        .reference-chip,
+        .role-chip {
+            display: inline-block;
+            padding: 6px 9px;
+            background: #164e63;
+            border: 1px solid #0891b2;
+            border-radius: 999px;
+            color: #cffafe;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .rule-columns {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            align-items: start;
+            gap: 12px;
+        }
+
+        .rule-column { display: grid; align-content: start; gap: 12px; }
+
+        .rule-card {
+            padding: 14px 16px;
+            background: var(--card-dark);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--rule-colour);
+            border-radius: 8px;
+        }
+
+        .rule-card.default-rule-card { border-left-color: var(--default-yellow); }
+        .default-rule-card .rule-title { color: #fef9c3; }
+
+        .rule-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+        .rule-title { margin: 0; color: #ffffff; font-size: 17px; }
+
+        .match-type,
+        .default-badge {
+            flex-shrink: 0;
+            padding: 5px 9px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .match-count-note {
+            margin: -8px 0 16px;
+            padding: 9px 11px;
+            background: #172033;
+            border-left: 3px solid var(--hpe-green);
+            border-radius: 5px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .match-type { background: #3b0764; border: 1px solid #7e22ce; color: #e9d5ff; }
+        .default-badge { background: #713f12; border: 1px solid #ca8a04; color: #fef9c3; }
+
+        .section-label { margin-top: 10px; margin-bottom: 6px; color: var(--hpe-green); font-size: 13px; font-weight: 700; }
+
+        .condition-list { display: grid; gap: 8px; }
+        .condition-item { padding: 8px 10px; background: #172033; border: 1px solid var(--border); border-radius: 6px; }
+        .condition-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 18px; }
+        .condition-expression { color: #ffffff; font-size: 13px; overflow-wrap: anywhere; }
+        .condition-count { color: #8fefcf; font-size: 12px; font-weight: 600; }
+        .condition-count.unavailable { color: var(--muted); font-style: italic; font-weight: 400; }
+        .condition-count-link {
+            color: #8fefcf;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: underline;
+            text-decoration-color: var(--hpe-green);
+            text-underline-offset: 3px;
+        }
+
+        .condition-count-link:hover,
+        .condition-count-link:focus {
+            color: #ffffff;
+        }
+        .condition-count-zero {
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .rule-match-count { margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--border); color: #facc15; font-size: 12px; font-weight: 600; }
+
+        .rule-condition,
+        .default-condition {
+            padding: 10px 12px;
+            background: #172033;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
+        .rule-condition { color: var(--text); white-space: pre-line; }
+        .default-condition { color: var(--muted); font-size: 12px; }
+
+        .message-list { display: grid; gap: 10px; }
+        .message { padding: 13px 15px; border-radius: 7px; color: var(--text); line-height: 1.5; }
+        .message-observation { background: #082f49; border: 1px solid #075985; }
+        .message-warning { background: #422006; border: 1px solid #a16207; color: #fef3c7; }
+        .empty-state { padding: 14px 16px; background: var(--card-dark); border: 1px dashed var(--border-secondary); border-radius: 8px; color: var(--muted); text-align: center; line-height: 1.6; }
+        .footer { margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--border); color: #64748b; font-size: 13px; text-align: center; }
+
+        @media (max-width: 1000px) {
+            .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .report-grid, .rule-columns { grid-template-columns: 1fr; }
+            .report-card.full-width { grid-column: auto; }
+            .role-object-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        @media (max-width: 650px) {
+            .content-wrapper { width: calc(100% - 24px); margin-top: 22px; }
+            .summary-grid, .service-object-list, .role-object-list, .detail-grid { grid-template-columns: 1fr; }
+            .detail-grid { gap: 5px; }
+            .detail-value { margin-bottom: 10px; }
+            .rule-header { align-items: flex-start; flex-direction: column; }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <span class="navbar-brand"><span class="brand-green">ClearPass</span> Policy Visualiser</span>
+    </nav>
+
+    <main class="content-wrapper">
+        <header class="page-header">
+            <h1 class="page-title">Impact Analysis</h1>
+            <p class="page-subtitle">{{ impact.object.type }}: {{ impact.object.name }}</p>
+        </header>
+
+        <section class="summary-grid">
+            <article class="summary-card">
+                <div class="summary-label">Usage Status</div>
+                <div class="summary-value {% if impact.summary.referenced %}status-assigned{% else %}status-not-assigned{% endif %}">{{ impact.summary.usage_status }}</div>
+            </article>
+            <article class="summary-card"><div class="summary-label">Affected Services</div><div class="summary-value">{{ impact.summary.affected_service_count }}</div></article>
+            <article class="summary-card"><div class="summary-label">Mapping Rules</div><div class="summary-value">{{ impact.summary.rule_count }}</div></article>
+            <article class="summary-card"><div class="summary-label">Mapped Roles</div><div class="summary-value">{{ impact.summary.mapped_role_count }}</div></article>
+        </section>
+
+        <section class="report-grid">
+            <article class="report-card">
+                <h2>Selected Object</h2>
+                <div class="detail-grid">
+                    <div class="detail-label">Name</div><div class="detail-value">{{ impact.object.name }}</div>
+                    <div class="detail-label">Object Type</div><div class="detail-value">{{ impact.object.type }}</div>
+                    <div class="detail-label">Object ID</div><div class="detail-value">{{ impact.object.id or "Not available" }}</div>
+                    <div class="detail-label">Rules Evaluation Algorithm</div>
+                    <div class="detail-value">
+                        {% if impact.object.rule_combine_algo in ["evaluate-all", "all-match"] %}All Match
+                        {% elif impact.object.rule_combine_algo in ["evaluate-first", "evaluate-first-match", "first-applicable"] %}First Applicable
+                        {% else %}{{ impact.object.rule_combine_algo or "Not configured" }}{% endif %}
+                    </div>
+                    <div class="detail-label">Default Role</div><div class="detail-value">{{ impact.object.default_role or "Not configured" }}</div>
+                    <div class="detail-label">Conditions</div><div class="detail-value">{{ impact.summary.condition_count }}</div>
+                    <div class="detail-label">Description</div><div class="detail-value">{{ impact.object.description or "Not configured" }}</div>
+                </div>
+            </article>
+
+            <article class="report-card">
+                <h2>Analysis Observations</h2>
+                {% if impact.observations %}
+                    <div class="message-list">{% for observation in impact.observations %}<div class="message message-observation">{{ observation }}</div>{% endfor %}</div>
+                {% else %}<div class="empty-state">No observations were generated.</div>{% endif %}
+            </article>
+
+            <article class="report-card full-width">
+                <h2>Affected Services</h2>
+                {% if impact.direct_dependencies.services %}
+                    <div class="service-object-list">
+                        {% for service in impact.direct_dependencies.services %}
+                            <div class="object-item">
+                                <div class="object-name">
+                                    {% if service.id %}
+                                        <a class="object-link"
+                                        href="{{ url_for('service', id=service.id) }}">{{ service.name }}
+                                        </a>
+                                    {% else %}
+                                        {{ service.name }}
+                                    {% endif %}
+                                </div>
+                                {% if service.id %}<div class="object-meta">Service ID: {{ service.id }}</div>{% endif %}
+                                {% if service.description %}<div class="object-meta">{{ service.description }}</div>{% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}<div class="empty-state">The Role Mapping Policy is not currently assigned to any discovered ClearPass Service.</div>{% endif %}
+            </article>
+
+            <article class="report-card full-width">
+                <h2>Mapped Roles</h2>
+                {% if impact.direct_dependencies.mapped_roles %}
+                    <div class="role-object-list">
+                        {% for role in impact.direct_dependencies.mapped_roles %}
+                            <div class="object-item">
+                                <div class="object-name">{{ role.name }}</div>
+                                {% if role.id %}<div class="object-meta">Role ID: {{ role.id }}</div>{% endif %}
+                                {% if role.description %}<div class="object-meta">{{ role.description }}</div>{% endif %}
+                                {% if role.reference_types %}
+                                    <div class="reference-chip-list">
+                                        {% for reference_type in role.reference_types %}
+                                            <span class="reference-chip">{% if reference_type == "default" %}Default Role{% elif reference_type == "rule" %}Rule Assigned{% else %}{{ reference_type }}{% endif %}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                {% if role.rule_numbers %}<div class="object-meta">Assigned by Rule: {{ role.rule_numbers | join(", ") }}</div>{% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}<div class="empty-state">No mapped Roles were found.</div>{% endif %}
+            </article>
+
+            <article class="report-card full-width">
+                <h2>Role Mapping Rules and Conditions</h2>
+                <div class="match-count-note">
+
+                    Match counts are shown only for conditions supported
+                    by the configured repository data source.
+
+                </div>
+                {% if impact.mapping_rules %}
+                    <div class="rule-columns">
+                        {% for rule_column in impact.mapping_rules | slice(2) %}
+                            <div class="rule-column">
+                                {% for rule in rule_column %}
+                                    <div class="rule-card">
+                                        <div class="rule-header"><h3 class="rule-title">Rule {{ rule.rule_number }}</h3><span class="match-type">{{ rule.match_type or "AND" }}</span></div>
+
+                                        {% if rule.condition_attributes %}
+                                            <div class="section-label">Conditions</div>
+                                            <div class="condition-list">
+                                                {% for condition in rule.condition_attributes %}
+                                                    <div class="condition-item">
+                                                        <div class="condition-row">
+                                                            <div class="condition-expression">{{ condition.source_type }}:{{ condition.attribute_name }} {{ condition.operator }} {% if condition.value %}{{ condition.value }}{% endif %}</div>
+                                                                {% if condition.endpoint_count is not none %}
+
+                                                                    <div class="condition-count">
+
+                                                                        {% if condition.endpoint_count > 0 %}
+
+                                                                            <a
+                                                                                class="condition-count-link"
+                                                                                href="{{ url_for(
+                                                                                    'repository_search',
+                                                                                    source_type=condition.source_type,
+                                                                                    attribute_name=condition.attribute_name,
+                                                                                    operator=condition.operator,
+                                                                                    value=condition.value
+                                                                                ) }}"
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                            >
+                                                                                {{ condition.match_count_label or "Matching Endpoints" }}:
+                                                                                {{ condition.endpoint_count }}
+                                                                                &#128269;
+                                                                            </a>
+
+                                                                        {% else %}
+
+                                                                            <span class="condition-count-zero">
+                                                                                {{ condition.match_count_label or "Matching Endpoints" }}:
+                                                                                0
+                                                                            </span>
+
+                                                                        {% endif %}
+
+                                                                    </div>
+
+                                                                {% else %}
+
+                                                                    <div class="condition-count unavailable">
+                                                                        Match count not available
+                                                                    </div>
+
+                                                                {% endif %}
+
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <div class="section-label">Condition</div><div class="rule-condition">{{ rule.condition | trim or "Unknown Condition" }}</div>
+                                        {% endif %}
+
+                                        {% if rule.rule_match_count is not none %}<div class="rule-match-count">{{ rule.rule_match_label or "Matching Rule Endpoints" }}: {{ rule.rule_match_count }}</div>{% endif %}
+
+                                        <div class="section-label">Mapped Role</div>
+                                        <div class="role-chip-list"><span class="role-chip">{{ rule.mapped_role.name }}</span></div>
+                                        {% if rule.mapped_role.description %}<div class="object-meta">{{ rule.mapped_role.description }}</div>{% endif %}
+                                    </div>
+                                {% endfor %}
+
+                                {% if loop.index == 2 and impact.object.default_role %}
+                                    <div class="rule-card default-rule-card">
+                                        <div class="rule-header"><h3 class="rule-title">Default Outcome</h3><span class="default-badge">DEFAULT</span></div>
+                                        <div class="section-label">Condition</div>
+                                        <div class="default-condition">Applied when none of the Role Mapping Policy rules match.</div>
+                                        <div class="section-label">Mapped Role</div>
+                                        <div class="role-chip-list"><span class="role-chip">{{ impact.object.default_role }}</span></div>
+                                        {% if impact.object.default_role_description %}<div class="object-meta">{{ impact.object.default_role_description }}</div>{% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">No Role Mapping Policy rules were found.</div>
+                    {% if impact.object.default_role %}
+                        <div class="rule-columns" style="margin-top:12px;">
+                            <div class="rule-column">
+                                <div class="rule-card default-rule-card">
+                                    <div class="rule-header"><h3 class="rule-title">Default Outcome</h3><span class="default-badge">DEFAULT</span></div>
+                                    <div class="section-label">Condition</div><div class="default-condition">Applied when no matching Role Mapping Policy rule is available.</div>
+                                    <div class="section-label">Mapped Role</div><div class="role-chip-list"><span class="role-chip">{{ impact.object.default_role }}</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </article>
+
+            {% if impact.warnings %}
+                <article class="report-card full-width"><h2>Data Availability</h2><div class="message-list">{% for warning in impact.warnings %}<div class="message message-warning">{{ warning }}</div>{% endfor %}</div></article>
+            {% endif %}
+        </section>
+
+        <footer class="footer">ClearPass Policy Visualiser {% if version %}v{{ version }}{% endif %} · Read-only impact analysis</footer>
+    </main>
+</body>
+</html>

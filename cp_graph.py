@@ -218,6 +218,7 @@ def build_service_graph(service):
                 "id": role_node,
                 "label": f"RM: {role_mapping}",
                 "type": "role_mapping",
+                "role_mapping_name": role_mapping,
                 "expandable": True,
                 "collapsed": True,
                 "description":
@@ -443,6 +444,7 @@ def build_service_graph(service):
                 "id": enforcement_node,
                 "label": f"EP: {enforcement_policy}",
                 "type": "enforcement_policy",
+                "policy_name": enforcement_policy,
                 "expandable": True,
                 "collapsed": True,
                 "description":

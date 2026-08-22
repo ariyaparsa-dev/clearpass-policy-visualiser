@@ -67,6 +67,136 @@ def get_enforcement_profile(profile_name):
 
     return profile
 
+def get_all_enforcement_profiles():
+    """
+    Retrieve all Enforcement Profiles from ClearPass.
+
+    Pagination is used so the result is not limited by the
+    ClearPass collection endpoint.
+    """
+
+    login = get_login()
+
+    profiles = []
+
+    offset = 0
+    page_size = 100
+    total_count = None
+
+    while True:
+
+        response = (
+            ApiEnforcementProfile
+            .get_enforcement_profile(
+                login,
+                offset=offset,
+                limit=page_size,
+                calculate_count="true",
+            )
+        )
+
+        if not isinstance(
+            response,
+            dict,
+        ):
+
+            logger.warning(
+                "Unexpected Enforcement Profile collection "
+                "response type: %s",
+                type(response).__name__,
+            )
+
+            break
+
+        embedded = response.get(
+            "_embedded",
+            {},
+        )
+
+        if not isinstance(
+            embedded,
+            dict,
+        ):
+
+            logger.warning(
+                "Enforcement Profile collection response "
+                "did not contain an _embedded dictionary."
+            )
+
+            break
+
+        items = embedded.get(
+            "items",
+            [],
+        )
+
+        if not isinstance(
+            items,
+            list,
+        ):
+
+            logger.warning(
+                "Enforcement Profile collection response "
+                "did not contain an items list."
+            )
+
+            break
+
+        if total_count is None:
+
+            count_value = response.get(
+                "count"
+            )
+
+            try:
+
+                total_count = int(
+                    count_value
+                )
+
+            except (
+                TypeError,
+                ValueError,
+            ):
+
+                total_count = None
+
+        profiles.extend(
+            items
+        )
+
+        if not items:
+            break
+
+        offset += len(
+            items
+        )
+
+        if (
+            total_count is not None
+            and
+            offset >= total_count
+        ):
+
+            break
+
+        if len(
+            items
+        ) < page_size:
+
+            break
+
+    logger.info(
+        "Retrieved %s Enforcement Profiles from "
+        "ClearPass",
+        len(
+            profiles
+        ),
+    )
+
+    return profiles
+
+
 def get_all_enforcement_policies():
     """
     Retrieve all Enforcement Policies from ClearPass.
@@ -204,6 +334,8 @@ def get_all_enforcement_policies():
     )
 
     return policies
+
+
 def build_profile_reference_cache():
     """
     Build complete Enforcement Profile references.
@@ -673,8 +805,13 @@ def get_enforcement_details(policy_name):
 
 
     result = {
+        "id": policy.get(
+            "id"
+        ),
         "name": policy["name"],
-        "description": policy.get("description"),
+        "description": policy.get(
+            "description"
+        ),
 
         "default_enforcement_profile":
             policy.get(

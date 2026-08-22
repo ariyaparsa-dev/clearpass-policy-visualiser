@@ -46,6 +46,10 @@ Additional capabilities include:
 - Read-only ClearPass change review before provisioning
 - Idempotent creation and validation of required ClearPass objects
 - Optional PostgreSQL endpoint profiling acceleration
+- Read-only Impact Analysis for Enforcement Profiles
+- Read-only Impact Analysis for Enforcement Policies
+- Read-only Impact Analysis for Role Mapping Policies
+- Dashboard Impact Analysis Lookup across used, unused and built-in policy objects
 
 The application uses ClearPass REST APIs secured with OAuth 2.0 Client Credentials Grant for policy retrieval, analysis and optional configuration.
 
@@ -108,6 +112,19 @@ Setup Complete reports which ClearPass objects were created and which existing o
 <p align="center">
   <img src="screenshots/screenshot-3.jpg" alt="Dashboard" width="800">
 </p>
+
+### Impact Analysis
+
+<p align="center">
+  <img src="screenshots/screenshot-enforcement-policy-impact-a.jpg" alt="Impact Analysis" width="800">
+</p>
+<p align="center">
+  <img src="screenshots/screenshot-enforcement-policy-impact-b.jpg" alt="Impact Analysis" width="800">
+</p>
+<p align="center">
+  <img src="screenshots/screenshot-enforcement-policy-impact-c.jpg" alt="Impact Analysis" width="800">
+</p>
+
 
 ### Service Dependency Graph
 
@@ -314,10 +331,38 @@ Interactive graph features include:
 - Previous and Next search navigation
 - Contextual object information
 - Direct Impact Analysis links from Enforcement Profile nodes
+- Direct Impact Analysis links from Enforcement Policy nodes
+- Direct Impact Analysis links from Role Mapping Policy nodes
 - PNG, JPG and SVG export
 
-
 Unused Enforcement Policies and Role Mapping Policies can also be opened directly from the Unused Objects view and displayed using the policy graph.
+
+Impact Analysis links open reports in a separate browser tab, preserving the current graph zoom, layout, branch expansion and selected-node state.
+
+### Dashboard Impact Analysis Lookup
+
+The dashboard provides a unified lookup for every ClearPass object supported by Impact Analysis.
+
+The lookup indexes:
+- Enforcement Profiles
+- Enforcement Policies
+- Role Mapping Policies
+- Used objects
+- Unused objects
+- ClearPass built-in objects
+
+Lookup features include:
+- Combined search across all supported object types
+- Optional filtering by object type
+- Case-insensitive substring matching
+- Exact and prefix match prioritisation
+- Object-type badges for similarly named results
+- Keyboard navigation using the Up Arrow, Down Arrow, Enter and Escape keys
+- Direct opening of the selected Impact Analysis report in a new browser tab
+- Cache-only searches that do not call ClearPass for each typed character
+- Automatic lookup cache rebuild during application startup and Refresh Cache
+
+The lookup retains objects with the same name when the objects belong to different categories. Lookup identity is based on object type and case-insensitive object name.
 
 ### Repository Search
 
@@ -360,6 +405,30 @@ Impact Analysis distinguishes between:
 - Enforcement Profiles referenced only by policies that are not assigned to a Service
 - Enforcement Profiles referenced by policies used across one or more Services
 
+### Enforcement Policy Impact Analysis
+
+Enforcement Policy Impact Analysis reports the complete operational scope of a selected Enforcement Policy.
+
+The report includes:
+
+- Assigned and Not Assigned usage classification
+- Affected ClearPass Services
+- Enforcement Policy ID, description and rule evaluation algorithm
+- Policy rule and structured-condition inventory
+- Positive Endpoint Repository match counts with direct Repository Search links
+- Confirmed zero match counts without empty-result links
+- Clear distinction between zero matches and unavailable match counts
+- Unique dependent Enforcement Profile inventory
+- Deduplication of Enforcement Profiles used by multiple rules
+- Rule numbers associated with each dependent Enforcement Profile
+- Rule-applied and default-profile classification
+- Default Outcome when no policy rule matches
+- Direct links to Enforcement Profile Impact Analysis
+- Shared Enforcement Profile usage across other Enforcement Policies and Services
+- Objective observations describing the discovered dependency scope
+
+The report is available from Service graphs, standalone Enforcement Policy graphs and Dashboard Impact Analysis Lookup.
+
 ### Endpoint Profiling
 
 Endpoint profiling can display:
@@ -379,15 +448,28 @@ Endpoint profiling can use either the ClearPass REST API or optional direct Post
 
 Provides detailed visibility into Enforcement Profile configuration and dependencies, including profile metadata, enforcement attributes and dependent policies and services.
 
-### Role Mapping Analysis
+### Role Mapping Policy Impact Analysis
 
-Provides visibility into:
+Role Mapping Policy Impact Analysis reports how a selected Role Mapping Policy assigns Roles across ClearPass Services.
 
-- Role Mapping Rules
-- Rule Conditions
-- Repository usage
-- Endpoint matches
-- Assigned roles
+The report includes:
+
+- Assigned and Not Assigned usage classification
+- Affected ClearPass Services
+- Role Mapping Policy ID, description and rule evaluation algorithm
+- Mapping rule and structured-condition inventory
+- Positive repository match counts with direct Repository Search links
+- Confirmed zero match counts without empty-result links
+- Clear distinction between zero matches and unavailable match counts
+- Unique mapped Role inventory
+- Deduplication of Roles assigned by multiple rules
+- Rule numbers associated with each mapped Role
+- Rule-assigned and default-Role classification
+- Default Outcome when no mapping rule matches
+- Role descriptions from the cached ClearPass Role inventory
+- Objective observations describing the discovered assignment scope
+
+The report is available from Service graphs, standalone Role Mapping Policy graphs and Dashboard Impact Analysis Lookup.
 
 ### Unused Object Analysis
 
@@ -404,6 +486,7 @@ Role usage is resolved across Role Mapping Policies, assigned roles, default rol
 
 ClearPass built-in objects named with square brackets are automatically excluded. Each unused-object category provides a one-click **Copy All** option.
 
+The Enforcement Profile unused count is intentionally strict. Only profiles with no Enforcement Policy references are counted as unused. Profiles referenced exclusively by policies that are not assigned to a Service are excluded from the unused count and remain visible through Impact Analysis. The Unused Objects interface includes an information tooltip explaining this distinction.
 ---
 
 ## Architecture
@@ -430,6 +513,11 @@ Flask Web Application
     │
     ├── Policy Visualisation
     ├── Dependency Analysis
+    ├── Impact Analysis
+    │       ├── Enforcement Profiles
+    │       ├── Enforcement Policies
+    │       ├── Role Mapping Policies
+    │       └── Dashboard Lookup Cache
     ├── Unused Object Analysis
     │
     ├── ClearPass REST APIs
@@ -583,6 +671,8 @@ clearpass-policy-visualiser
 ├── cp_services.py
 ├── cp_setup.py
 ├── cp_unused_objects.py
+├── cp_impact_analysis.py
+├── cp_impact_lookup.py
 │
 ├── auth/
 │
@@ -599,6 +689,9 @@ clearpass-policy-visualiser
 │   ├── service.html
 │   ├── setup.html
 │   ├── setup_complete.html
+│   ├── enforcement_policy_impact_analysis.html
+│   ├── impact_analysis.html
+│   ├── role_mapping_policy_impact_analysis.html
 │   └── unused_objects.html
 │
 ├── static/
@@ -813,6 +906,7 @@ Startup includes:
 - Enforcement Profile reference cache
 - Role Mapping reference cache
 - Unused Object cache
+- Impact Analysis lookup cache
 
 The Setup Complete page displays an animated loading overlay while the initial cache is being built.
 
@@ -820,7 +914,7 @@ The Setup Complete page displays an animated loading overlay while the initial c
 
 ## Refreshing Cached Data
 
-The dashboard provides a cache refresh operation which rebuilds Visualiser data from ClearPass, including health, services, roles, Enforcement Profile references, Role Mapping references and Unused Object analysis.
+The dashboard provides a cache refresh operation which rebuilds Visualiser data from ClearPass, including health, Services, Roles, Enforcement Profile references, Role Mapping references, Unused Object analysis and the Impact Analysis lookup index.
 
 ---
 
@@ -852,6 +946,8 @@ These figures are observations from the reference environment and are not guaran
 - Configuration cleanup
 - Endpoint repository and profiling analysis
 - Operational knowledge transfer
+- Pre-change dependency review for Enforcement Policies and Role Mapping Policies
+- Rapid lookup of used, unused and built-in policy objects
 
 ---
 
@@ -860,7 +956,8 @@ These figures are observations from the reference environment and are not guaran
 Planned enhancements include:
 
 - Administrator-only connection configuration page
-- Expanded Impact Analysis for Enforcement Policies, Role Mapping Policies and Roles
+- Impact Analysis for individual Roles
+- Wider Role-sharing analysis across Role Mapping Policies
 - Secure validation and update of saved ClearPass, RADIUS and PostgreSQL connection settings
 - Enhanced role-based authorisation controls
 - Standalone packaged release
@@ -869,6 +966,75 @@ Planned enhancements include:
 ---
 
 ## Changelog
+
+### v1.5.0
+
+#### Enforcement Policy Impact Analysis
+
+- Added read-only Impact Analysis reports for Enforcement Policies
+- Added Assigned and Not Assigned usage classification
+- Added affected Service discovery and direct Service navigation
+- Added Enforcement Policy IDs, descriptions and friendly rule evaluation algorithms
+- Added complete policy rule and structured-condition reporting
+- Added unique dependent Enforcement Profile inventories
+- Added deduplication of profiles used by multiple rules
+- Added rule-applied and default-profile classifications
+- Added Default Outcome reporting for unmatched policy requests
+- Added direct links to Enforcement Profile Impact Analysis
+- Added shared Enforcement Profile usage across other policies and Services
+- Added positive Repository Search links for supported condition match counts
+- Preserved confirmed zero counts without empty-result links
+- Preserved unavailable match counts as informational text
+
+#### Role Mapping Policy Impact Analysis
+
+- Added read-only Impact Analysis reports for Role Mapping Policies
+- Added Assigned and Not Assigned usage classification
+- Added affected Service discovery and direct Service navigation
+- Added Role Mapping Policy IDs, descriptions and friendly rule evaluation algorithms
+- Added complete mapping rule and structured-condition reporting
+- Added unique mapped Role inventories
+- Added deduplication of Roles assigned by multiple rules
+- Added rule-assigned and default-Role classifications
+- Added Default Outcome reporting for unmatched Role Mapping requests
+- Added Role descriptions from the cached Role inventory
+- Added positive Repository Search links for supported condition match counts
+- Preserved confirmed zero counts without empty-result links
+- Reduced repeated unavailable-count messages in Role Mapping reports
+
+#### Dashboard Impact Analysis Lookup
+
+- Added a unified dashboard lookup for Enforcement Profiles, Enforcement Policies and Role Mapping Policies
+- Added lookup coverage for used, unused and ClearPass built-in objects
+- Added object-type filtering
+- Added case-insensitive exact, prefix and substring matching
+- Added object-type badges for similarly named results
+- Added keyboard navigation using the Up Arrow, Down Arrow, Enter and Escape keys
+- Added direct new-tab opening of selected Impact Analysis reports
+- Added filter-change reset to prevent incompatible stale selections
+- Added an authenticated cache-only lookup API
+- Added startup and Refresh Cache rebuild of the lookup index
+- Added complete paginated inventories for Enforcement Profiles, Enforcement Policies and Role Mapping Policies
+
+#### Graph Integration
+
+- Added direct Impact Analysis links to Enforcement Policy graph nodes
+- Added direct Impact Analysis links to Role Mapping Policy graph nodes
+- Added stable policy-name fields to Service and standalone object graphs
+- Preserved graph state by opening Impact Analysis reports in a new browser tab
+
+#### Unused Object Clarification
+
+- Added an information tooltip explaining the strict Enforcement Profile unused classification
+- Clarified that profiles referenced only by unassigned policies are excluded from the unused count
+
+#### Cache and Data Handling
+
+- Added complete paginated Enforcement Profile inventory retrieval
+- Added complete paginated Role Mapping Policy inventory retrieval
+- Added Impact Analysis lookup cache containing supported policy objects
+- Added lookup cache reset and rebuild during Refresh Cache
+- Added Enforcement Policy raw lookup-cache clearing during cache refresh
 
 ### v1.4.0
 
@@ -1064,6 +1230,6 @@ Always validate configuration changes before applying them to production environ
 
 ---
 
-**ClearPass Policy Visualiser v1.4.0**
+**ClearPass Policy Visualiser v1.5.0**
 
 Visualise. Analyse. Troubleshoot.

@@ -834,15 +834,26 @@ function resetCollapsedBranches() {
             let algorithm =
                 evaluationAlgorithm;
 
-            if (algorithm === "evaluate-all") {
+            if (
+                algorithm === "evaluate-all"
+                ||
+                algorithm === "all-match"
+            ) {
+
                 algorithm = "All Match";
+
             }
 
             if (
-                algorithm === "evaluate-first" ||
+                algorithm === "evaluate-first"
+                ||
                 algorithm === "evaluate-first-match"
+                ||
+                algorithm === "first-applicable"
             ) {
-                algorithm = "First Match";
+
+                algorithm = "First Applicable";
+
             }
 
             extraDetails += `
@@ -1419,6 +1430,84 @@ function resetCollapsedBranches() {
             `;
 
         }
+
+        if (
+            data.type === "enforcement_policy"
+            &&
+            data.policy_name
+        ) {
+
+            const policyImpactAnalysisUrl =
+                `/impact-analysis/enforcement-policy/${
+                    encodeURIComponent(
+                        data.policy_name
+                    )
+                }`;
+
+            extraDetails += `
+                <div class="node-info-label">
+                    Impact Analysis
+                </div>
+
+                <div class="node-info-value">
+
+                    <a href="${policyImpactAnalysisUrl}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style="
+                            color:#FFFFFF;
+                            font-size: 0.9rem;
+                            text-decoration:underline;
+                        "
+                    > 🔗 View Impact Analysis </a>
+
+                </div>
+            `;
+
+        }
+
+
+
+
+       if (
+            data.type === "role_mapping"
+            &&
+            data.role_mapping_name
+        ) {
+
+            const roleMappingImpactAnalysisUrl =
+                `/impact-analysis/role-mapping-policy/${
+                    encodeURIComponent(
+                        data.role_mapping_name
+                    )
+                }`;
+
+            extraDetails += `
+                <div class="node-info-label">
+                    Impact Analysis
+                </div>
+
+                <div class="node-info-value">
+
+                    <a href="${roleMappingImpactAnalysisUrl}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style="
+                            color:#FFFFFF;
+                            font-size: 0.9rem;
+                            text-decoration:underline;
+                        "
+                    > 🔗 View Impact Analysis </a>
+
+                </div>
+            `;
+
+        }
+
+
+
+
+
 
         infoPanel.innerHTML = `
 
