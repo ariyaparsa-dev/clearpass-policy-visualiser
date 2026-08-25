@@ -398,6 +398,7 @@ Impact Analysis includes:
 - Dependency discovery for Enforcement Policies not currently assigned to a Service
 - Direct Impact Analysis access from Enforcement Profile graph nodes
 - Separate-tab report workflow that preserves the current graph state
+- Reports can be downloaded as print-optimised PDF documents or complete structured JSON datasets
 
 Impact Analysis distinguishes between:
 
@@ -426,6 +427,7 @@ The report includes:
 - Direct links to Enforcement Profile Impact Analysis
 - Shared Enforcement Profile usage across other Enforcement Policies and Services
 - Objective observations describing the discovered dependency scope
+- Reports can be downloaded as print-optimised PDF documents or complete structured JSON datasets
 
 The report is available from Service graphs, standalone Enforcement Policy graphs and Dashboard Impact Analysis Lookup.
 
@@ -468,6 +470,7 @@ The report includes:
 - Default Outcome when no mapping rule matches
 - Role descriptions from the cached ClearPass Role inventory
 - Objective observations describing the discovered assignment scope
+- Reports can be downloaded as print-optimised PDF documents or complete structured JSON datasets
 
 The report is available from Service graphs, standalone Role Mapping Policy graphs and Dashboard Impact Analysis Lookup.
 
@@ -966,6 +969,16 @@ Planned enhancements include:
 ---
 
 ## Changelog
+
+### v1.5.1
+
+#### Impact Analysis Report Export
+
+- Added PDF and JSON downloads to all Impact Analysis reports
+- Added print-optimised A4 PDF layouts with improved typography and pagination
+- Added complete structured JSON exports for comparison, automation and support
+- Added object-aware filenames, Visualiser version and export timestamps
+- Added an accessible **Download Report** menu with keyboard support
 
 ### v1.5.0
 
