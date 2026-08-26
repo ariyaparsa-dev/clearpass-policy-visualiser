@@ -1504,9 +1504,38 @@ function resetCollapsedBranches() {
 
         }
 
+        if (
+            data.type === "mapped_role"
+            &&
+            data.role_name
+        ) {
+            const roleImpactAnalysisUrl =
+                `/impact-analysis/role/${
+                    encodeURIComponent(
+                        data.role_name
+                    )
+                }`;
 
+            extraDetails += `
+                <div class="node-info-label">
+                    Impact Analysis
+                </div>
 
+                <div class="node-info-value">
 
+                    <a href="${roleImpactAnalysisUrl}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style="
+                            color:#FFFFFF;
+                            font-size: 0.9rem;
+                            text-decoration:underline;
+                        "
+                    > 🔗 View Impact Analysis
+                    </a>
+                </div>
+            `;
+        }
 
 
         infoPanel.innerHTML = `

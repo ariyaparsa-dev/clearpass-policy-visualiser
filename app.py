@@ -39,11 +39,16 @@ from cp_object_graph import (
 from cp_impact_analysis import (
     analyse_enforcement_policy,
     analyse_enforcement_profile,
+    analyse_role,
     analyse_role_mapping_policy,
 )
 
 from cp_impact_lookup import (
     build_impact_analysis_lookup_cache,
+)
+
+from cp_role_references import (
+    build_role_reference_cache,
 )
 
 import cp_cache
@@ -1305,6 +1310,7 @@ def impact_analysis_lookup():
         "enforcement_profile",
         "enforcement_policy",
         "role_mapping_policy",
+        "role",
     }
 
     if object_type not in valid_types:
@@ -1471,14 +1477,20 @@ def impact_analysis_lookup():
             ==
             "role_mapping_policy"
         ):
-
             impact_url = url_for(
                 "role_mapping_policy_impact_analysis",
                 name=entry_name,
             )
-
+        elif (
+            entry_type
+            ==
+            "role"
+        ):
+            impact_url = url_for(
+                "role_impact_analysis",
+                name=entry_name,
+            )
         else:
-
             continue
 
         results.append(
@@ -1514,6 +1526,7 @@ def refresh_cache():
     cp_cache.role_mapping_reference_cache = {}
     cp_cache.policy_reference_cache = {}
     cp_cache.role_cache = {}
+    cp_cache.role_reference_cache = {}
     cp_cache.impact_analysis_lookup_cache = []
 
     cp_cache.health_cache = check_clearpass()
@@ -1566,6 +1579,21 @@ def refresh_cache():
     logger.info(
         "Built reference cache for %s Enforcement Profiles",
         len(cp_cache.profile_reference_cache),
+    )
+
+    logger.info(
+        "Building Role Reference Cache..."
+    )
+
+    cp_cache.role_reference_cache = (
+        build_role_reference_cache()
+    )
+
+    logger.info(
+        "Role references cached: %s",
+        len(
+            cp_cache.role_reference_cache
+        ),
     )
 
     logger.info(
@@ -1690,6 +1718,21 @@ def initialise_cache():
 
     cp_cache.role_mapping_reference_cache = (
         build_role_mapping_reference_cache()
+    )
+
+    logger.info(
+        "Building Role Reference Cache..."
+    )
+
+    cp_cache.role_reference_cache = (
+        build_role_reference_cache()
+    )
+
+    logger.info(
+        "Role references cached: %s",
+        len(
+            cp_cache.role_reference_cache
+        ),
     )
 
     logger.info(
@@ -2549,6 +2592,138 @@ def role_mapping_policy_impact_analysis(
         version=VERSION,
     )
 
+@app.route(
+    "/impact-analysis/role/"
+    "<path:name>"
+)
+@login_required
+def role_impact_analysis(
+    name,
+):
+    """
+    Display read-only impact analysis for a ClearPass Role.
+    """
+    role = ROLE_CACHE.get(
+        name
+    )
+
+    if not isinstance(
+        role,
+        dict,
+    ):
+        requested_name = (
+            str(name)
+            .strip()
+            .casefold()
+        )
+
+        for cached_name, cached_role in (
+            ROLE_CACHE.items()
+        ):
+            if (
+                str(cached_name)
+                .strip()
+                .casefold()
+                == requested_name
+            ):
+                role = cached_role
+                break
+
+    if not isinstance(
+        role,
+        dict,
+    ):
+        return (
+            "Role not found",
+            404,
+        )
+
+    role_name = (
+        role.get(
+            "name"
+        )
+        or
+        name
+    )
+
+    reference_cache_available = isinstance(
+        cp_cache.role_reference_cache,
+        dict,
+    )
+
+    references = {}
+
+    if reference_cache_available:
+        references = (
+            cp_cache.role_reference_cache.get(
+                role_name,
+                {}
+            )
+        )
+
+        if not references:
+            requested_name = (
+                str(role_name)
+                .strip()
+                .casefold()
+            )
+
+            for (
+                cached_name,
+                cached_references,
+            ) in (
+                cp_cache.role_reference_cache.items()
+            ):
+                if (
+                    str(cached_name)
+                    .strip()
+                    .casefold()
+                    == requested_name
+                ):
+                    references = (
+                        cached_references
+                    )
+                    break
+    else:
+        logger.warning(
+            "Role reference cache is unavailable "
+            "for impact analysis: %s",
+            role_name,
+        )
+
+    impact = analyse_role(
+        role,
+        references,
+        reference_cache_supplied=(
+            reference_cache_available
+        ),
+    )
+
+    logger.info(
+        "Impact analysis generated for Role '%s': "
+        "%s Role Mapping Policies, "
+        "%s Enforcement Policies, "
+        "%s Operator Profiles, %s services",
+        role_name,
+        impact["summary"][
+            "role_mapping_policy_count"
+        ],
+        impact["summary"][
+            "enforcement_policy_count"
+        ],
+        impact["summary"][
+            "operator_profile_count"
+        ],
+        impact["summary"][
+            "affected_service_count"
+        ],
+    )
+
+    return render_template(
+        "role_impact_analysis.html",
+        impact=impact,
+        version=VERSION,
+    )
 
 if __name__ == "__main__":
     if is_setup_complete(log_missing=True):

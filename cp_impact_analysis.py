@@ -2690,28 +2690,6 @@ def _merge_mapped_role(
     )
 
 
-
-from collections.abc import Mapping
-from typing import Any
-
-
-def _normalise_identifier(
-    value: Any,
-) -> str:
-    """
-    Minimal local definition used only to validate this
-    downloadable helper file.
-
-    Do not copy this function into cp_impact_analysis.py
-    because it already exists there.
-    """
-
-    if value is None:
-        return ""
-
-    return str(value).strip()
-
-
 def _build_role_mapping_observations(
     affected_services: list[
         dict[str, Any]
@@ -3262,4 +3240,412 @@ def analyse_role_mapping_policy(
         "warnings": (
             warnings
         ),
+    }
+
+def _normalise_role_condition(
+    condition: Mapping[str, Any] | None,
+) -> dict[str, str]:
+    """Normalise a cached Tips:Role condition."""
+
+    condition = condition or {}
+
+    operator_map = {
+        "EQUALS": "=",
+        "NOT_EQUALS": "!=",
+        "EXISTS": "EXISTS",
+        "NOT_EXISTS": "NOT EXISTS",
+        "CONTAINS": "CONTAINS",
+        "BELONGS_TO": "BELONGS_TO",
+        "IN_RANGE": "IN_RANGE",
+        "GREATER_THAN": ">",
+        "LESS_THAN": "<",
+        "GREATER_THAN_OR_EQUALS": ">=",
+        "LESS_THAN_OR_EQUALS": "<=",
+        "MATCHES_ALL": "ALL",
+        "MATCHES_ANY": "ANY",
+    }
+
+    raw_operator = _normalise_text(
+        condition.get("operator")
+    )
+
+    return {
+        "source_type": _normalise_text(
+            condition.get("source_type")
+        ),
+        "attribute_name": _normalise_text(
+            condition.get("attribute_name")
+        ),
+        "operator": operator_map.get(
+            raw_operator,
+            raw_operator,
+        ),
+        "value": _normalise_text(
+            condition.get("value")
+        ),
+    }
+
+
+def _normalise_role_policy_reference(
+    reference: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Normalise one policy reference for a Role report."""
+
+    services = []
+
+    for service in reference.get("services", []):
+        if not isinstance(service, Mapping):
+            continue
+
+        normalised_service = _normalise_service(
+            service
+        )
+
+        normalised_service["enabled"] = (
+            service.get("enabled")
+        )
+
+        services.append(
+            normalised_service
+        )
+
+    conditions = [
+        _normalise_role_condition(condition)
+        for condition in reference.get(
+            "conditions",
+            [],
+        )
+        if isinstance(condition, Mapping)
+    ]
+
+    return {
+        "id": _normalise_identifier(
+            reference.get("id")
+        ),
+        "name": _normalise_text(
+            reference.get("name")
+        ),
+        "description": _normalise_text(
+            reference.get("description")
+        ),
+        "reference_types": list(
+            dict.fromkeys(
+                reference.get(
+                    "reference_types",
+                    [],
+                )
+            )
+        ),
+        "rule_numbers": sorted(
+            set(
+                reference.get(
+                    "rule_numbers",
+                    [],
+                )
+            )
+        ),
+        "conditions": conditions,
+        "services": _deduplicate_objects(
+            services
+        ),
+    }
+
+
+def _build_role_observations(
+    role_mapping_policies: list[dict[str, Any]],
+    enforcement_policies: list[dict[str, Any]],
+    operator_profiles: list[dict[str, Any]],
+    affected_services: list[dict[str, Any]],
+) -> list[str]:
+    """Build objective observations for a Role report."""
+
+    observations = []
+
+    role_mapping_count = len(
+        role_mapping_policies
+    )
+    enforcement_count = len(
+        enforcement_policies
+    )
+    operator_count = len(
+        operator_profiles
+    )
+    service_count = len(
+        affected_services
+    )
+
+    if (
+        role_mapping_count == 0
+        and enforcement_count == 0
+        and operator_count == 0
+    ):
+        observations.append(
+            "No discovered Role Mapping Policy, "
+            "Enforcement Policy or enabled Operator "
+            "Profile references this Role."
+        )
+    else:
+        if role_mapping_count == 1:
+            observations.append(
+                "The Role is referenced by one Role "
+                "Mapping Policy."
+            )
+        elif role_mapping_count > 1:
+            observations.append(
+                "The Role is shared across "
+                f"{role_mapping_count} Role Mapping "
+                "Policies."
+            )
+
+        if enforcement_count == 1:
+            observations.append(
+                "One Enforcement Policy evaluates the "
+                "Role through a Tips:Role condition."
+            )
+        elif enforcement_count > 1:
+            observations.append(
+                f"{enforcement_count} Enforcement "
+                "Policies evaluate the Role through "
+                "Tips:Role conditions."
+            )
+
+        if operator_count == 1:
+            observations.append(
+                "One enabled Operator Profile references "
+                "the Role through the Guest Role mapping."
+            )
+        elif operator_count > 1:
+            observations.append(
+                f"{operator_count} enabled Operator "
+                "Profiles reference the Role through "
+                "the Guest Role mapping."
+            )
+
+    if service_count == 0:
+        observations.append(
+            "No discovered ClearPass Service is "
+            "associated with the Role references."
+        )
+    elif service_count == 1:
+        observations.append(
+            "The Role is associated with one discovered "
+            "ClearPass Service."
+        )
+    else:
+        observations.append(
+            "The Role is associated with "
+            f"{service_count} discovered ClearPass "
+            "Services."
+        )
+
+    if service_count > 1:
+        observations.append(
+            "Changes to this shared Role can influence "
+            "policy evaluation across multiple "
+            "authentication workflows."
+        )
+
+    return observations
+
+
+def analyse_role(
+    role: Mapping[str, Any],
+    references: Mapping[str, Any] | None = None,
+    *,
+    reference_cache_supplied: bool = True,
+) -> dict[str, Any]:
+    """Build a serialisable Impact Analysis report for a Role."""
+
+    if not isinstance(role, Mapping):
+        raise TypeError("role must be a mapping")
+
+    references = references or {}
+
+    role_mapping_policies = [
+        _normalise_role_policy_reference(reference)
+        for reference in references.get(
+            "role_mapping_policies",
+            [],
+        )
+        if isinstance(reference, Mapping)
+    ]
+
+    enforcement_policies = [
+        _normalise_role_policy_reference(reference)
+        for reference in references.get(
+            "enforcement_policies",
+            [],
+        )
+        if isinstance(reference, Mapping)
+    ]
+
+    operator_profiles = []
+
+    for profile in references.get(
+        "operator_profiles",
+        [],
+    ):
+        if not isinstance(profile, Mapping):
+            continue
+
+        operator_profiles.append(
+            {
+                "id": _normalise_identifier(
+                    profile.get("id")
+                ),
+                "name": _normalise_text(
+                    profile.get("name")
+                ),
+                "enabled": bool(
+                    profile.get("enabled")
+                ),
+                "guest_role_id": _normalise_text(
+                    profile.get("guest_role_id")
+                ),
+            }
+        )
+
+    affected_services = []
+
+    for service in references.get("services", []):
+        if not isinstance(service, Mapping):
+            continue
+
+        normalised_service = _normalise_service(
+            service
+        )
+        normalised_service["enabled"] = (
+            service.get("enabled")
+        )
+        affected_services.append(normalised_service)
+
+    affected_services = _deduplicate_objects(
+        affected_services
+    )
+
+    reference_count = (
+        len(role_mapping_policies)
+        + len(enforcement_policies)
+        + len(operator_profiles)
+    )
+
+    rule_assignment_policy_count = sum(
+        "rule_assignment"
+        in policy.get("reference_types", [])
+        for policy in role_mapping_policies
+    )
+
+    default_policy_count = sum(
+        "default"
+        in policy.get("reference_types", [])
+        for policy in role_mapping_policies
+    )
+
+    condition_policy_count = sum(
+        "condition"
+        in policy.get("reference_types", [])
+        for policy in role_mapping_policies
+    ) + len(enforcement_policies)
+
+    warnings = []
+
+    role_id = _normalise_identifier(
+        _first_value(
+            role,
+            "id",
+            "role_id",
+            "roleId",
+            "uuid",
+        )
+    )
+
+    if not role_id:
+        warnings.append(
+            "The Role ID was not available in the "
+            "supplied data."
+        )
+
+    if not reference_cache_supplied:
+        warnings.append(
+            "Role reference data was not supplied. The "
+            "report cannot determine complete policy, "
+            "Service or Operator Profile usage."
+        )
+
+    return {
+        "schema_version": IMPACT_SCHEMA_VERSION,
+        "analysis_type": "role",
+        "object": {
+            "type": "Role",
+            "id": role_id,
+            "name": _normalise_text(
+                _first_value(
+                    role,
+                    "name",
+                    "role_name",
+                    "roleName",
+                    default="Unknown Role",
+                )
+            ),
+            "description": _normalise_text(
+                _first_value(
+                    role,
+                    "description",
+                    "desc",
+                )
+            ),
+        },
+        "summary": {
+            "referenced": reference_count > 0,
+            "usage_status": (
+                "Referenced"
+                if reference_count > 0
+                else "Not Referenced"
+            ),
+            "role_mapping_policy_count": len(
+                role_mapping_policies
+            ),
+            "enforcement_policy_count": len(
+                enforcement_policies
+            ),
+            "operator_profile_count": len(
+                operator_profiles
+            ),
+            "affected_service_count": len(
+                affected_services
+            ),
+            "rule_assignment_policy_count": (
+                rule_assignment_policy_count
+            ),
+            "default_policy_count": default_policy_count,
+            "condition_policy_count": (
+                condition_policy_count
+            ),
+            "shared_across_multiple_policies": (
+                len(role_mapping_policies)
+                + len(enforcement_policies)
+            ) > 1,
+            "shared_across_multiple_services": (
+                len(affected_services) > 1
+            ),
+        },
+        "direct_dependencies": {
+            "role_mapping_policies": (
+                role_mapping_policies
+            ),
+            "enforcement_policies": (
+                enforcement_policies
+            ),
+            "operator_profiles": operator_profiles,
+        },
+        "extended_impact": {
+            "services": affected_services,
+        },
+        "observations": _build_role_observations(
+            role_mapping_policies,
+            enforcement_policies,
+            operator_profiles,
+            affected_services,
+        ),
+        "warnings": warnings,
     }

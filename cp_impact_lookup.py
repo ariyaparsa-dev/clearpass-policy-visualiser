@@ -11,6 +11,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+import cp_cache
+
 from cp_enforcement import (
     get_all_enforcement_policies,
     get_all_enforcement_profiles,
@@ -105,6 +107,7 @@ def build_impact_analysis_lookup_cache() -> list[
     - Enforcement Profiles
     - Enforcement Policies
     - Role Mapping Policies
+    - Roles
 
     Built-in objects are retained because they can support
     Impact Analysis even though Unused Objects excludes
@@ -131,6 +134,13 @@ def build_impact_analysis_lookup_cache() -> list[
         get_all_role_mapping_policies()
     )
 
+    roles = list(
+        (
+            cp_cache.role_cache
+            or {}
+        ).values()
+    )
+
     _add_lookup_entries(
         lookup_entries,
         seen,
@@ -153,6 +163,14 @@ def build_impact_analysis_lookup_cache() -> list[
         role_mapping_policies,
         "role_mapping_policy",
         "Role Mapping Policy",
+    )
+
+    _add_lookup_entries(
+        lookup_entries,
+        seen,
+        roles,
+        "role",
+        "Role",
     )
 
     return sorted(

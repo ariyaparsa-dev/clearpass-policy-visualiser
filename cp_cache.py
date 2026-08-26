@@ -3,6 +3,7 @@ profile_reference_cache = {}
 role_mapping_reference_cache = {}
 policy_reference_cache = {}
 role_cache = {}
+role_reference_cache = {}
 impact_analysis_lookup_cache = []
 
 health_cache = None

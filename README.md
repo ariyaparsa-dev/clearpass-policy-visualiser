@@ -49,6 +49,7 @@ Additional capabilities include:
 - Read-only Impact Analysis for Enforcement Profiles
 - Read-only Impact Analysis for Enforcement Policies
 - Read-only Impact Analysis for Role Mapping Policies
+- Read-only Impact Analysis for Roles
 - Dashboard Impact Analysis Lookup across used, unused and built-in policy objects
 
 The application uses ClearPass REST APIs secured with OAuth 2.0 Client Credentials Grant for policy retrieval, analysis and optional configuration.
@@ -333,6 +334,7 @@ Interactive graph features include:
 - Direct Impact Analysis links from Enforcement Profile nodes
 - Direct Impact Analysis links from Enforcement Policy nodes
 - Direct Impact Analysis links from Role Mapping Policy nodes
+- Direct Impact Analysis links from mapped Role nodes
 - PNG, JPG and SVG export
 
 Unused Enforcement Policies and Role Mapping Policies can also be opened directly from the Unused Objects view and displayed using the policy graph.
@@ -347,6 +349,7 @@ The lookup indexes:
 - Enforcement Profiles
 - Enforcement Policies
 - Role Mapping Policies
+- Roles
 - Used objects
 - Unused objects
 - ClearPass built-in objects
@@ -474,6 +477,26 @@ The report includes:
 
 The report is available from Service graphs, standalone Role Mapping Policy graphs and Dashboard Impact Analysis Lookup.
 
+### Role Impact Analysis
+
+Role Impact Analysis reports where a selected ClearPass Role is referenced and the resulting policy and Service dependencies.
+
+The report includes:
+
+- Referenced and Not Referenced usage classification
+- Role ID and description
+- Referencing Role Mapping Policies
+- Rule-assigned and default-Role references
+- `Tips:Role` conditions in Role Mapping Policies
+- `Tips:Role` conditions in Enforcement Policies
+- Enabled Guest Operator Profile references
+- Relevant rule numbers and conditions
+- Deduplicated affected ClearPass Services
+- Objective observations describing the discovered dependency scope
+- Reports can be downloaded as print-optimised PDF documents or complete structured JSON datasets
+
+The report is available from Dashboard Impact Analysis Lookup and mapped Role nodes in policy visualisations.
+
 ### Unused Object Analysis
 
 Identifies ClearPass configuration objects that are no longer referenced, based on dependency analysis rather than name matching.
@@ -520,6 +543,7 @@ Flask Web Application
     │       ├── Enforcement Profiles
     │       ├── Enforcement Policies
     │       ├── Role Mapping Policies
+    │       ├── Roles
     │       └── Dashboard Lookup Cache
     ├── Unused Object Analysis
     │
@@ -694,6 +718,7 @@ clearpass-policy-visualiser
 │   ├── setup_complete.html
 │   ├── enforcement_policy_impact_analysis.html
 │   ├── impact_analysis.html
+    ├── role_impact_analysis.html
 │   ├── role_mapping_policy_impact_analysis.html
 │   └── unused_objects.html
 │
@@ -959,7 +984,6 @@ These figures are observations from the reference environment and are not guaran
 Planned enhancements include:
 
 - Administrator-only connection configuration page
-- Impact Analysis for individual Roles
 - Wider Role-sharing analysis across Role Mapping Policies
 - Secure validation and update of saved ClearPass, RADIUS and PostgreSQL connection settings
 - Enhanced role-based authorisation controls
@@ -969,6 +993,13 @@ Planned enhancements include:
 ---
 
 ## Changelog
+
+### v1.5.2
+
+- Added Impact Analysis for ClearPass Roles.
+- Added Role dependency analysis across policies, profiles and affected Services.
+- Added Role Impact Analysis links from policy visualisations.
+
 
 ### v1.5.1
 
@@ -1243,6 +1274,6 @@ Always validate configuration changes before applying them to production environ
 
 ---
 
-**ClearPass Policy Visualiser v1.5.0**
+**ClearPass Policy Visualiser v1.5.2**
 
 Visualise. Analyse. Troubleshoot.

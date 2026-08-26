@@ -681,6 +681,10 @@
                         <option value="role_mapping_policy">
                             Role Mapping Policies
                         </option>
+                        <option value="role">
+                            Roles
+                        </option>
+
                     </select>
 
                 </div>
@@ -699,7 +703,7 @@
                         class="impact-lookup-input"
                         type="search"
                         autocomplete="off"
-                        placeholder="Search profiles, enforcement policies and role mapping policies..."
+                        placeholder="Search Impact Analysis objects..."
                         aria-autocomplete="list"
                         aria-controls="impactLookupResults"
                         aria-expanded="false"
@@ -1056,7 +1060,7 @@ function renderImpactLookupResults(data) {
 
         const message = document.createElement("div");
         message.className = "impact-lookup-message";
-        message.textContent = "No matching policy objects found.";
+        message.textContent = "No matching Impact Analysis objects found.";
         impactLookupResults.appendChild(message);
         impactLookupResults.classList.add("show");
         impactLookupInput.setAttribute("aria-expanded", "true");
