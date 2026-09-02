@@ -994,6 +994,15 @@ Planned enhancements include:
 
 ## Changelog
 
+### v1.5.3
+
+- Improved handling and diagnostics for unexpected ClearPass Endpoint and Guest API responses.
+- Added validation for non-JSON, malformed and API error responses to prevent uncontrolled cache initialisation failures.
+- Improved cache initialisation state tracking so partially populated caches are not treated as fully initialised.
+- Added graceful handling when the dashboard is requested before cache initialisation completes.
+- Improved cache refresh state handling and reset of cached unused-object data during refresh.
+- Corrected endpoint preload logging so it no longer incorrectly identifies PostgreSQL as the active source before the configured source is determined.
+
 ### v1.5.2
 
 - Added Impact Analysis for ClearPass Roles.

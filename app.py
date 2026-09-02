@@ -1187,6 +1187,20 @@ def start_visualiser():
 @app.route("/")
 @login_required
 def home():
+
+    if not cp_cache.initialised:
+        logger.warning(
+            "Dashboard requested while Visualiser "
+            "cache initialisation is incomplete."
+        )
+
+        return (
+            "ClearPass Policy Visualiser data "
+            "initialisation is incomplete. "
+            "Check the application log for details.",
+            503,
+        )
+
     if (
         cp_cache.health_cache is None
         or time.time()
@@ -1521,6 +1535,8 @@ def refresh_cache():
         "Refreshing ClearPass caches..."
     )
 
+    cp_cache.initialised = False
+
     cp_cache.services_cache = []
     cp_cache.profile_reference_cache = {}
     cp_cache.role_mapping_reference_cache = {}
@@ -1528,6 +1544,7 @@ def refresh_cache():
     cp_cache.role_cache = {}
     cp_cache.role_reference_cache = {}
     cp_cache.impact_analysis_lookup_cache = []
+    cp_cache.unused_objects_cache = None
 
     cp_cache.health_cache = check_clearpass()
     cp_cache.health_cache_time = time.time()
@@ -1619,6 +1636,8 @@ def refresh_cache():
         ),
     )
 
+    cp_cache.initialised = True
+
     logger.info(
         "Cache refresh complete."
     )
@@ -1659,8 +1678,13 @@ def initialise_cache():
     )
     logger.info("=" * 60)
 
-    if cp_cache.services_cache:
+    if cp_cache.initialised:
+        logger.info(
+            "ClearPass caches are already initialised."
+        )
         return
+
+    cp_cache.initialised = False
 
     logger.info(
         "Loading ClearPass services..."
@@ -1685,7 +1709,7 @@ def initialise_cache():
     cp_cache.health_cache_time = time.time()
 
     logger.info(
-        "Pre-loading endpoint fingerprint cache via PostgreSQL..."
+        "Pre-loading endpoint data..."
     )
 
     preload_endpoint_data()
@@ -1695,8 +1719,10 @@ def initialise_cache():
     )
 
     role_cache = build_role_cache()
+
     ROLE_CACHE.clear()
     ROLE_CACHE.update(role_cache)
+
     cp_cache.role_cache = ROLE_CACHE
 
     logger.info(
@@ -1758,21 +1784,31 @@ def initialise_cache():
         ),
     )
 
+    cp_cache.initialised = True
+
     logger.info(
         "Cache initialisation complete."
     )
 
     logger.info(
         "Services: %s",
-        len(cp_cache.services_cache),
+        len(
+            cp_cache.services_cache
+        ),
     )
+
     logger.info(
         "Role Mapping Policies: %s",
-        len(cp_cache.role_mapping_reference_cache),
+        len(
+            cp_cache.role_mapping_reference_cache
+        ),
     )
+
     logger.info(
         "Enforcement Profiles: %s",
-        len(cp_cache.profile_reference_cache),
+        len(
+            cp_cache.profile_reference_cache
+        ),
     )
 
     logger.info(

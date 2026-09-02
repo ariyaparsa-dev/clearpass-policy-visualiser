@@ -4,6 +4,86 @@ import time
 import logging
 logger = logging.getLogger(__name__)
 
+MAX_API_ERROR_BODY_LENGTH = 2000
+
+
+def _format_api_error_body(response):
+    """
+    Return a bounded representation of an unexpected
+    ClearPass API response for diagnostic logging.
+    """
+    body = str(response).strip()
+
+    if not body:
+        return "<empty response>"
+
+    if len(body) > MAX_API_ERROR_BODY_LENGTH:
+        return (
+            body[:MAX_API_ERROR_BODY_LENGTH]
+            + "... [truncated]"
+        )
+
+    return body
+
+
+def _raise_for_clearpass_api_error(
+    response,
+    api_name,
+):
+    """
+    Validate a response returned by pyclearpass.
+
+    pyclearpass may return raw response text when a
+    ClearPass response cannot be decoded as JSON.
+    """
+    if not isinstance(response, dict):
+        logger.error(
+            "ClearPass %s API returned an unexpected "
+            "non-JSON response. Response type: %s. "
+            "Response body: %s",
+            api_name,
+            type(response).__name__,
+            _format_api_error_body(response),
+        )
+
+        raise RuntimeError(
+            f"ClearPass {api_name} API returned an "
+            "unexpected non-JSON response."
+        )
+
+    status = response.get("status")
+
+    if (
+        isinstance(status, int)
+        and status >= 400
+    ):
+        title = response.get(
+            "title",
+            "API Error",
+        )
+        detail = response.get(
+            "detail",
+            "",
+        )
+
+        logger.error(
+            "ClearPass %s API returned an error. "
+            "Status: %s. Title: %s. Detail: %s. "
+            "Response body: %s",
+            api_name,
+            status,
+            title,
+            detail,
+            _format_api_error_body(response),
+        )
+
+        raise RuntimeError(
+            f"ClearPass {api_name} API returned "
+            f"error status {status}: {title}"
+        )
+
+    return response
+
 from pyclearpass import *
 from pyclearpass.api_endpointvisibility import ApiEndpointVisibility
 
@@ -203,19 +283,77 @@ def get_all_endpoints():
 
     login = get_login()
 
-    response = ApiIdentities.get_endpoint(
-        login,
-        limit=500,
-        profile_details="true"
+    try:
+        response = ApiIdentities.get_endpoint(
+            login,
+            limit=500,
+            profile_details="true",
+        )
+    except Exception as exc:
+        logger.exception(
+            "ClearPass Endpoint API request failed: %s",
+            exc,
+        )
+
+        raise RuntimeError(
+            "Unable to retrieve endpoint data from "
+            "the ClearPass Endpoint API."
+        ) from exc
+
+
+    response = _raise_for_clearpass_api_error(
+        response,
+        "Endpoint",
     )
 
-    ENDPOINT_CACHE = response.get(
+
+    embedded = response.get(
         "_embedded",
-        {}
-    ).get(
-        "items",
-        []
+        {},
     )
+
+    if not isinstance(
+        embedded,
+        dict,
+    ):
+        logger.error(
+            "ClearPass Endpoint API returned an unexpected "
+            "response structure. '_embedded' type: %s. "
+            "Response body: %s",
+            type(embedded).__name__,
+            _format_api_error_body(response),
+        )
+
+        raise RuntimeError(
+            "ClearPass Endpoint API returned an unexpected "
+            "response structure."
+        )
+
+
+    items = embedded.get(
+        "items",
+        [],
+    )
+
+    if not isinstance(
+        items,
+        list,
+    ):
+        logger.error(
+            "ClearPass Endpoint API returned an unexpected "
+            "response structure. '_embedded.items' type: %s. "
+            "Response body: %s",
+            type(items).__name__,
+            _format_api_error_body(response),
+        )
+
+        raise RuntimeError(
+            "ClearPass Endpoint API returned an unexpected "
+            "endpoint collection."
+        )
+
+
+    ENDPOINT_CACHE = items
 
     return ENDPOINT_CACHE
 
@@ -228,18 +366,76 @@ def get_all_guests():
 
     login = get_login()
 
-    response = ApiIdentities.get_guest(
-        login,
-        limit=500
+    try:
+        response = ApiIdentities.get_guest(
+            login,
+            limit=500,
+        )
+    except Exception as exc:
+        logger.exception(
+            "ClearPass Guest API request failed: %s",
+            exc,
+        )
+
+        raise RuntimeError(
+            "Unable to retrieve guest data from "
+            "the ClearPass Guest API."
+        ) from exc
+
+
+    response = _raise_for_clearpass_api_error(
+        response,
+        "Guest",
     )
 
-    GUEST_CACHE = response.get(
+
+    embedded = response.get(
         "_embedded",
-        {}
-    ).get(
-        "items",
-        []
+        {},
     )
+
+    if not isinstance(
+        embedded,
+        dict,
+    ):
+        logger.error(
+            "ClearPass Guest API returned an unexpected "
+            "response structure. '_embedded' type: %s. "
+            "Response body: %s",
+            type(embedded).__name__,
+            _format_api_error_body(response),
+        )
+
+        raise RuntimeError(
+            "ClearPass Guest API returned an unexpected "
+            "response structure."
+        )
+
+
+    items = embedded.get(
+        "items",
+        [],
+    )
+
+    if not isinstance(
+        items,
+        list,
+    ):
+        logger.error(
+            "ClearPass Guest API returned an unexpected "
+            "response structure. '_embedded.items' type: %s. "
+            "Response body: %s",
+            type(items).__name__,
+            _format_api_error_body(response),
+        )
+
+        raise RuntimeError(
+            "ClearPass Guest API returned an unexpected "
+            "guest collection."
+        )
+
+
+    GUEST_CACHE = items
 
     return GUEST_CACHE
 
