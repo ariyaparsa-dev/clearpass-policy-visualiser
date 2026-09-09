@@ -66,6 +66,12 @@ In the reference environment, PostgreSQL reduced endpoint fingerprint cache load
 
 ---
 
+## Configuration and Operation Guide
+
+For detailed guidance, see the [ClearPass Policy Visualiser technote](https://solutiontechlab.com/2026/08/22/clearpass-policy-visualiser/), which covers ClearPass API access and step-by-step installation, configuration and usage of ClearPass Policy Visualiser.
+
+---
+
 ## Screenshots
 
 ### Setup Validation
@@ -513,6 +519,7 @@ Role usage is resolved across Role Mapping Policies, assigned roles, default rol
 ClearPass built-in objects named with square brackets are automatically excluded. Each unused-object category provides a one-click **Copy All** option.
 
 The Enforcement Profile unused count is intentionally strict. Only profiles with no Enforcement Policy references are counted as unused. Profiles referenced exclusively by policies that are not assigned to a Service are excluded from the unused count and remain visible through Impact Analysis. The Unused Objects interface includes an information tooltip explaining this distinction.
+
 ---
 
 ## Architecture
