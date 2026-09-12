@@ -1,0 +1,17 @@
+services:
+  visualiser:
+    build:
+      context: .
+    image: clearpass-policy-visualiser:dev
+    container_name: clearpass-policy-visualiser
+    environment:
+      TZ: ${TZ:-UTC}
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - clearpass-visualiser-data:/data
+    restart: unless-stopped
+
+volumes:
+  clearpass-visualiser-data:
+    name: clearpass-visualiser-data

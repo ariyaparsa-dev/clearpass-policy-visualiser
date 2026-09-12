@@ -1,7 +1,6 @@
-
-import os
 import time
 import logging
+
 logger = logging.getLogger(__name__)
 
 MAX_API_ERROR_BODY_LENGTH = 2000
@@ -210,69 +209,52 @@ def get_endpoint_fingerprint(
         {}
     )
 
-
 def preload_endpoint_data():
+    """
+    Pre-load ClearPass endpoint profiling data
+    from PostgreSQL.
 
-    source = os.getenv(
-        "ENDPOINT_PROFILE_SOURCE",
-        "api"
-    ).lower()
+    PostgreSQL is the supported source for the
+    initial endpoint profiling cache. A failure to
+    load the cache is fatal and is propagated to
+    the application startup process.
+    """
 
-    if source == "sql":
+    global FINGERPRINT_CACHE
 
-        try:
-            from cp_endpoint_sql import build_fingerprint_cache_from_sql
+    from cp_endpoint_sql import (
+        build_fingerprint_cache_from_sql
+    )
 
-            start = time.time()
+    start = time.perf_counter()
 
-            sql_cache = build_fingerprint_cache_from_sql()
+    logger.info(
+        "Pre-loading endpoint profiling data "
+        "using PostgreSQL..."
+    )
 
-            global FINGERPRINT_CACHE
-            FINGERPRINT_CACHE = sql_cache
+    try:
 
-            logger.info(
-                "Endpoint pre-load complete using SQL: %s fingerprint entries in %.3fs",
-                len(FINGERPRINT_CACHE),
-                time.time() - start
-            )
+        sql_cache = (
+            build_fingerprint_cache_from_sql()
+        )
 
-            return
+        FINGERPRINT_CACHE = sql_cache
 
-        except Exception:
+    except Exception:
 
-            logger.exception(
-                "SQL endpoint pre-load failed."
-            )
+        logger.exception(
+            "PostgreSQL endpoint pre-load failed."
+        )
 
-            fallback = os.getenv(
-                "ENDPOINT_SQL_FALLBACK_TO_API",
-                "true"
-            ).lower() == "true"
+        raise
 
-            if not fallback:
-                raise
-
-            logger.warning(
-                "Falling back to API endpoint pre-load."
-            )
-
-    # Existing API-based preload code continues below this point
-
-
-
-    print("Pre-loading endpoint cache...")
-
-    get_all_endpoints()
-
-    print("Pre-loading guest cache...")
-
-    get_all_guests()
-
-    print("Pre-loading fingerprint cache...")
-
-    build_fingerprint_cache()
-
-    print("Endpoint pre-load complete")
+    logger.info(
+        "Endpoint pre-load complete using PostgreSQL: "
+        "%s fingerprint entries in %.3fs",
+        len(FINGERPRINT_CACHE),
+        time.perf_counter() - start
+    )
 
 def get_all_endpoints():
 

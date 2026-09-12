@@ -1115,45 +1115,6 @@
 
             </section>
 
-            <!-- Endpoint Profiling -->
-            <section class="setup-card">
-                <h2>Endpoint Profiling</h2>
-
-                <div class="field">
-                    <label for="endpoint_source">Profiling Source</label>
-
-                    <select
-                        id="endpoint_source"
-                        name="endpoint_source"
-                    >
-                        <option
-                            value="api"
-                            {% if not form or form.endpoint_source == "api" %}
-                            selected
-                            {% endif %}
-                        >
-                            REST API
-                        </option>
-
-                        <option
-                            value="sql"
-                            {% if form and form.endpoint_source == "sql" %}
-                            selected
-                            {% endif %}
-                        >
-                            PostgreSQL - Recommended for faster profiling
-                        </option>
-                    </select>
-
-                    <div class="field-hint">
-                        REST API provides the standard setup without requiring
-                        database access. PostgreSQL is recommended for faster
-                        endpoint profiling lookups when the ClearPass
-                        <code>appexternal</code> account is available.
-                    </div>
-                </div>
-            </section>
-
             <!-- PostgreSQL Endpoint Profiling -->
             <section
                 class="setup-card"
@@ -1166,6 +1127,11 @@
                     <strong>
                         ClearPass PostgreSQL credentials
                     </strong>
+
+                    <p>
+                        PostgreSQL access is required for endpoint profiling
+                        in the ClearPass Policy Visualiser.
+                    </p>
 
                     <p>
                         The
@@ -1344,7 +1310,6 @@
             "clearpass_client_secret",
             "clearpass_client_secret_confirm",
             "clearpass_verify_ssl",
-            "endpoint_source",
             "sql_host",
             "sql_port",
             "sql_password",
@@ -1388,16 +1353,6 @@
         const clearpassApiUrl =
             document.getElementById(
                 "clearpass_api_url"
-            );
-
-        const endpointSource =
-            document.getElementById(
-                "endpoint_source"
-            );
-
-        const sqlSettings =
-            document.getElementById(
-                "sql-settings"
             );
 
         const sqlHost =
@@ -1516,16 +1471,6 @@
             }
         }
 
-
-        function updateSqlVisibility() {
-            if (endpointSource.value === "sql") {
-                sqlSettings.style.display =
-                    "block";
-            } else {
-                sqlSettings.style.display =
-                    "none";
-            }
-        }
 
         function invalidateProvisioningReview() {
 
@@ -1824,11 +1769,6 @@
             updateDerivedHosts
         );
 
-        endpointSource.addEventListener(
-            "change",
-            updateSqlVisibility
-        );
-
         assistedProvisioning.addEventListener(
             "change",
             updateProvisioningVisibility
@@ -1860,7 +1800,6 @@
         );
 
         updateDerivedHosts();
-        updateSqlVisibility();
         updateProvisioningVisibility();
     </script>
 </body>
