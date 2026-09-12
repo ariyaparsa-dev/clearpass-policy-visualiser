@@ -45,7 +45,7 @@ Additional capabilities include:
 - Optional API-assisted ClearPass configuration
 - Read-only ClearPass change review before provisioning
 - Idempotent creation and validation of required ClearPass objects
-- Optional PostgreSQL endpoint profiling acceleration
+- PostgreSQL endpoint profiling
 - Read-only Impact Analysis for Enforcement Profiles
 - Read-only Impact Analysis for Enforcement Policies
 - Read-only Impact Analysis for Role Mapping Policies
@@ -56,7 +56,7 @@ The application uses ClearPass REST APIs secured with OAuth 2.0 Client Credentia
 
 Users authenticate against ClearPass using RADIUS, with application permissions derived from returned role attributes such as `Aruba-User-Role`.
 
-Endpoint profiling data can optionally be loaded from the ClearPass PostgreSQL database using the built-in `appexternal` account and the `tips_endpoint_profiles` table.
+Endpoint profiling data is loaded directly from the ClearPass PostgreSQL database using the built-in `appexternal` account and the `tips_endpoint_profiles` table.
 
 In the reference environment, PostgreSQL reduced endpoint fingerprint cache loading from approximately 74 seconds using the REST API to approximately 0.08 seconds.
 
@@ -178,8 +178,7 @@ The setup workflow configures:
 - RADIUS authentication
 - RADIUS shared secret
 - NAS Identifier
-- Endpoint profiling source
-- Optional ClearPass PostgreSQL endpoint profiling
+- ClearPass PostgreSQL endpoint profiling
 - Optional API-assisted ClearPass configuration
 
 Sensitive fields require confirmation before validation. Configuration is validated before being persisted.
@@ -192,7 +191,7 @@ Validation includes:
 
 - ClearPass server connectivity
 - ClearPass REST API authentication
-- PostgreSQL connectivity when PostgreSQL endpoint profiling is selected
+- PostgreSQL endpoint profiling connectivity
 
 If the ClearPass server cannot be reached, the REST API authentication test is skipped rather than incorrectly reported as an authentication failure.
 
@@ -453,7 +452,9 @@ Endpoint profiling can display:
 - MAC Vendor
 - IPv4 Address
 
-Endpoint profiling can use either the ClearPass REST API or optional direct PostgreSQL access for accelerated cache loading.
+Endpoint profiling data is loaded directly from the ClearPass PostgreSQL database using the built-in `appexternal` account.
+
+The PostgreSQL endpoint profiling cache is loaded during application startup. If PostgreSQL connectivity or authentication fails, cache initialisation stops and the Visualiser does not fall back to REST API endpoint profiling.
 
 ### Enforcement Profile Analysis
 
@@ -566,7 +567,7 @@ Flask Web Application
     │       ├── Operator Profiles
     │       └── Endpoint Repository
     │
-    └── PostgreSQL (Optional)
+    └── PostgreSQL
             └── Endpoint Profiling Cache
 ```
 
@@ -623,9 +624,9 @@ Class
 
 The required RADIUS server, port, shared secret and NAS Identifier are configured through Initial Setup.
 
-### PostgreSQL Endpoint Profiling Acceleration
+### PostgreSQL Endpoint Profiling
 
-Endpoint profiling information can optionally be loaded directly from the ClearPass PostgreSQL database using the built-in read-only account:
+Endpoint profiling information is loaded directly from the ClearPass PostgreSQL database using the built-in account:
 
 ```text
 appexternal
@@ -637,32 +638,11 @@ The Visualiser queries:
 tips_endpoint_profiles
 ```
 
-The `appexternal` password is configured in ClearPass under:
-
-```text
-Administration › Server Manager › Server Configuration
-› Cluster-Wide Parameters › Database
-```
-
 Use the External PostgreSQL Password configured on the Database tab.
 
-#### REST API Mode
+Initial Setup requests the PostgreSQL host, port, database, username, password and password confirmation. The PostgreSQL connection is validated before setup can complete.
 
-REST API mode is the default and does not require direct database connectivity.
-
-```text
-Endpoint Profiling Source: REST API
-```
-
-#### PostgreSQL Mode
-
-PostgreSQL is recommended for faster endpoint profiling when the `appexternal` account is available.
-
-```text
-Endpoint Profiling Source: PostgreSQL
-```
-
-When PostgreSQL mode is selected, Initial Setup requests the host, port, database, username, password and password confirmation. The connection is validated before setup can complete.
+PostgreSQL access is required for endpoint profiling. If the PostgreSQL endpoint profiling cache cannot be loaded during application startup, cache initialisation stops rather than falling back to REST API endpoint profiling.
 
 ### Data Source Summary
 
@@ -679,18 +659,25 @@ When PostgreSQL mode is selected, Initial Setup requests the host, port, databas
 | Local Users | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Guest Operator Profiles | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Endpoint Repository | ClearPass REST API | OAuth 2.0 Client Credentials |
-| Endpoint Profiling Cache | REST API or PostgreSQL | OAuth 2.0 / `appexternal` |
+| Endpoint Profiling Cache | PostgreSQL | `appexternal` |
 
 ---
 
 ## Project Structure
 
 ```text
+
 clearpass-policy-visualiser
 │
 ├── app.py
+├── server.py
 ├── version.py
 ├── requirements.txt
+├── cp_paths.py
+│
+├── Dockerfile
+├── compose.yaml
+├── .dockerignore
 │
 ├── cp_cache.py
 ├── cp_client.py
@@ -725,7 +712,7 @@ clearpass-policy-visualiser
 │   ├── setup_complete.html
 │   ├── enforcement_policy_impact_analysis.html
 │   ├── impact_analysis.html
-    ├── role_impact_analysis.html
+│   ├── role_impact_analysis.html
 │   ├── role_mapping_policy_impact_analysis.html
 │   └── unused_objects.html
 │
@@ -748,6 +735,7 @@ Flask-Limiter>=3.8.0
 python-dotenv>=1.0.1
 psycopg[binary]>=3.2.0
 pyclearpass>=1.0.8
+waitress>=3.0.2
 ```
 
 PyYAML is not a direct production dependency because the legacy YAML configuration path has been removed.
@@ -756,17 +744,108 @@ PyYAML is not a direct production dependency because the legacy YAML configurati
 
 ## Requirements
 
-- Python 3.11 or later
+### ClearPass Requirements
+
 - Aruba ClearPass Policy Manager
 - ClearPass REST API Client using OAuth 2.0 Client Credentials Grant
 - A ClearPass API Client with sufficient permissions to inspect and optionally create the required Policy Visualiser objects
 - Network connectivity from the Visualiser host to ClearPass
 - RADIUS configuration in ClearPass for Visualiser user authentication
-- PostgreSQL access using the built-in `appexternal` account only when PostgreSQL endpoint profiling is selected
+- PostgreSQL access using the built-in `appexternal` account for endpoint profiling
+
+### Docker Deployment
+
+For Docker deployment:
+
+- Docker Engine
+- Docker Compose v2
+
+Docker Desktop is the simplest installation option for Windows and macOS and includes Docker Engine, Docker CLI and Docker Compose.
+
+Verify Docker and Docker Compose with:
+
+```bash
+docker --version
+docker compose version
+```
+
+Python does not need to be installed on the host when running the Visualiser using Docker.
+
+### Native Python Deployment
+
+For native deployment without Docker:
+
+- Python 3.11 or later
+- The Python dependencies listed in `requirements.txt`
 
 ---
 
 ## Installation
+
+### Docker Deployment
+
+Docker is the recommended deployment method.
+
+Clone the repository and enter the project directory:
+
+```bash
+git clone <REPOSITORY-URL>
+cd clearpass-policy-visualiser
+```
+
+Start the Visualiser:
+
+```bash
+docker compose up
+```
+
+Docker Compose builds the Visualiser image and starts the application.
+
+When startup completes, open:
+
+`http://127.0.0.1:5000`
+
+On a new installation, the application starts without initialising the ClearPass caches and presents the Initial Setup page.
+
+To run the Visualiser in the background:
+
+```bash
+docker compose up -d
+```
+
+To follow application logs:
+
+```bash
+docker compose logs -f
+```
+
+To stop the Visualiser:
+
+```bash
+docker compose down
+```
+
+Visualiser configuration and the Flask session secret are stored in the persistent `clearpass-visualiser-data` Docker volume so that configuration survives container replacement.
+
+### Docker Timezone
+
+The container defaults to UTC.
+
+To use another timezone, create a `.env` file in the project directory and set `TZ`. For example:
+
+```text
+TZ=Australia/Melbourne
+```
+
+Then start the Visualiser normally:
+
+```bash
+docker compose up
+```
+
+### Native Python Deployment
+
+Python 3.11 or later is required for a native installation.
 
 ```bash
 git clone <REPOSITORY-URL>
@@ -774,13 +853,13 @@ cd clearpass-policy-visualiser
 python -m venv venv
 ```
 
-### Windows
+#### Windows
 
 ```bash
 venv\Scripts\activate
 ```
 
-### Linux
+#### Linux
 
 ```bash
 source venv/bin/activate
@@ -829,12 +908,32 @@ Home › Administration › API Services › API Clients
 
 ### Endpoint Profiling
 
-Select:
+Endpoint profiling uses the ClearPass PostgreSQL database.
 
-- REST API
-- PostgreSQL - recommended for faster profiling
+Configure:
 
-REST API is the default and does not require direct database connectivity. When PostgreSQL is selected, configure the PostgreSQL host, port, database, username and password.
+- PostgreSQL Host
+- PostgreSQL Port
+- Database
+- Username
+- Password
+- Confirm Password
+
+The default PostgreSQL username is:
+
+```text
+appexternal
+```
+
+The `appexternal` password is configured in ClearPass under:
+
+```text
+Administration › Server Manager › Server Configuration
+› Cluster-Wide Parameters › Database
+```
+Use the External PostgreSQL Password configured on the Database tab.
+
+Initial Setup validates PostgreSQL connectivity before the configuration can be completed.
 
 ### Assisted Configuration Flow
 
@@ -900,6 +999,14 @@ Existing matching Local Users are preserved and their passwords are not reset.
 
 If `FLASK_SECRET_KEY` is not explicitly configured, the application generates a persistent Flask session secret and stores it in `.flask_secret`. This file is excluded from Git.
 
+### Docker Persistent Storage
+
+For Docker deployments, `.visualiser.env` and `.flask_secret` are stored in the persistent `clearpass-visualiser-data` Docker volume.
+
+The persistent volume preserves the Visualiser configuration and Flask session secret when the container is stopped or recreated.
+
+For native Python deployments, these files are stored in the local application directory.
+
 ### Correcting Saved Credentials
 
 To correct connection credentials after Initial Setup:
@@ -926,11 +1033,29 @@ If the RADIUS secret is changed, the value must match the shared secret configur
 
 ## Starting the Visualiser
 
-For an existing configured installation:
+### Docker
+
+For an existing configured Docker installation:
+
+```bash
+docker compose up
+```
+
+Or run in the background:
+
+```bash
+docker compose up -d
+```
+
+### Native Python
+
+For an existing configured native installation:
 
 ```bash
 python app.py
 ```
+
+On subsequent launches with a complete configuration, the Visualiser automatically initialises the caches before starting the web application.
 
 Startup includes:
 
@@ -961,6 +1086,8 @@ The dashboard provides a cache refresh operation which rebuilds Visualiser data 
 |--------|------|
 | REST API | ~74 seconds |
 | PostgreSQL | ~0.08 seconds |
+
+The REST API result is retained as a historical performance comparison. ClearPass Policy Visualiser v1.6.0 uses PostgreSQL for endpoint profiling and does not fall back to REST API endpoint profiling.
 
 Reference environment:
 
@@ -1000,6 +1127,20 @@ Planned enhancements include:
 ---
 
 ## Changelog
+
+### v1.6.0
+
+- Added Docker container deployment with Docker Compose.
+- Added Waitress as the production WSGI server.
+- Added persistent container storage for Visualiser configuration and Flask session secrets.
+- Added non-root container execution and restricted permissions for sensitive configuration files.
+- Added configurable container timezone support using the `TZ` environment variable.
+- Added persistent data path handling for native and container deployments.
+- Changed endpoint profiling to use the ClearPass PostgreSQL database.
+- Removed REST API fallback for endpoint profiling when PostgreSQL is unavailable.
+- Updated Initial Setup to configure and validate PostgreSQL endpoint profiling access.
+- Improved endpoint profiling cache initialisation and logging.
+- Updated cache refresh handling so Last Refresh reflects completion of a successful manual refresh.
 
 ### v1.5.3
 
@@ -1239,7 +1380,7 @@ Planned enhancements include:
 
 ## Security Considerations
 
-The Visualiser handles credentials used to communicate with ClearPass and, when enabled, PostgreSQL.
+The Visualiser handles credentials used to communicate with ClearPass and PostgreSQL.
 
 Files containing local secrets are excluded from Git, including:
 
@@ -1263,6 +1404,13 @@ Administrators should:
 - Never commit `.visualiser.env` or `.flask_secret`
 
 API-assisted configuration never deletes existing ClearPass objects and never automatically replaces conflicting objects.
+
+For Docker deployments:
+
+- The Visualiser container runs as the non-root `visualiser` user.
+- The application port is published to `127.0.0.1:5000` by default.
+- Persistent configuration is stored in the `clearpass-visualiser-data` Docker volume.
+- Sensitive configuration files should remain readable and writable only by the Visualiser user.
 
 ---
 
@@ -1290,6 +1438,6 @@ Always validate configuration changes before applying them to production environ
 
 ---
 
-**ClearPass Policy Visualiser v1.5.2**
+**ClearPass Policy Visualiser v1.6.0**
 
 Visualise. Analyse. Troubleshoot.

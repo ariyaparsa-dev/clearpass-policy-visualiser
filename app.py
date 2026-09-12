@@ -31,11 +31,19 @@ from cp_setup import (
     save_setup_configuration,
     validate_setup_connectivity,
 )
+
+from cp_paths import (
+    get_flask_secret_file,
+    get_visualiser_env_file,
+)
+
 from cp_unused_objects import get_unused_object_summary
+
 from cp_object_graph import (
     build_enforcement_policy_graph,
     build_role_mapping_graph,
 )
+
 from cp_impact_analysis import (
     analyse_enforcement_policy,
     analyse_enforcement_profile,
@@ -53,9 +61,8 @@ from cp_role_references import (
 
 import cp_cache
 
-
 load_dotenv(
-    ".visualiser.env",
+    get_visualiser_env_file(),
     override=True,
 )
 
@@ -107,7 +114,7 @@ if radius_server:
 
 app = Flask(__name__)
 
-FLASK_SECRET_FILE = ".flask_secret"
+FLASK_SECRET_FILE = get_flask_secret_file()
 
 
 def get_flask_secret_key():
@@ -119,6 +126,13 @@ def get_flask_secret_key():
         return env_secret
 
     if os.path.exists(FLASK_SECRET_FILE):
+
+        if os.name == "posix":
+            os.chmod(
+                FLASK_SECRET_FILE,
+                0o600,
+            )
+
         with open(
             FLASK_SECRET_FILE,
             "r",
@@ -137,6 +151,12 @@ def get_flask_secret_key():
         encoding="utf-8",
     ) as secret_file:
         secret_file.write(new_secret)
+
+    if os.name == "posix":
+        os.chmod(
+            FLASK_SECRET_FILE,
+            0o600,
+        )
 
     logger.info(
         "Generated new Flask session secret."
@@ -286,11 +306,6 @@ def render_setup(
 def setup_provisioning_preview():
     """Return a read-only ClearPass provisioning preview as JSON."""
 
-    endpoint_source = (
-        request.form.get("endpoint_source", "api")
-        .strip()
-        .lower()
-    )
     clearpass_verify_ssl = (
         request.form.get("clearpass_verify_ssl", "false")
         .strip()
@@ -320,8 +335,6 @@ def setup_provisioning_preview():
         "nas_identifier": request.form.get(
             "nas_identifier", "clearpass-policy-visualiser"
         ).strip(),
-        "endpoint_source": endpoint_source,
-        "sql_fallback": "true",
         "sql_host": request.form.get(
             "sql_host", ""
         ).strip(),
@@ -342,6 +355,7 @@ def setup_provisioning_preview():
     admin_user_id = request.form.get(
         "provision_admin_user_id", "vis-admin"
     ).strip()
+
     helpdesk_user_id = request.form.get(
         "provision_helpdesk_user_id", "vis-helpdesk"
     ).strip()
@@ -355,96 +369,153 @@ def setup_provisioning_preview():
         )
 
     if not config["clearpass_api_url"]:
-        errors.append("ClearPass API URL is required.")
+        errors.append(
+            "ClearPass API URL is required."
+        )
+
     if not config["clearpass_client_id"]:
-        errors.append("ClearPass Client ID is required.")
+        errors.append(
+            "ClearPass Client ID is required."
+        )
+
     if not config["clearpass_client_secret"]:
-        errors.append("ClearPass Client Secret is required.")
+        errors.append(
+            "ClearPass Client Secret is required."
+        )
     elif (
         config["clearpass_client_secret"]
-        != request.form.get("clearpass_client_secret_confirm", "")
+        != request.form.get(
+            "clearpass_client_secret_confirm",
+            ""
+        )
     ):
-        errors.append("ClearPass Client Secret entries do not match.")
+        errors.append(
+            "ClearPass Client Secret entries do not match."
+        )
 
-    if clearpass_verify_ssl not in {"true", "false"}:
-        errors.append("Invalid ClearPass SSL verification setting.")
+    if clearpass_verify_ssl not in {
+        "true",
+        "false",
+    }:
+        errors.append(
+            "Invalid ClearPass SSL verification setting."
+        )
 
     if not config["radius_server"]:
-        errors.append("RADIUS Server is required.")
+        errors.append(
+            "RADIUS Server is required."
+        )
+
     if not config["radius_secret"]:
-        errors.append("RADIUS Shared Secret is required.")
+        errors.append(
+            "RADIUS Shared Secret is required."
+        )
     elif (
         config["radius_secret"]
-        != request.form.get("radius_secret_confirm", "")
+        != request.form.get(
+            "radius_secret_confirm",
+            ""
+        )
     ):
-        errors.append("RADIUS Shared Secret entries do not match.")
+        errors.append(
+            "RADIUS Shared Secret entries do not match."
+        )
 
     if not config["nas_identifier"]:
         errors.append(
             "NAS Identifier is required for ClearPass provisioning."
         )
+
     if not admin_user_id:
-        errors.append("Visualiser Administrator username is required.")
+        errors.append(
+            "Visualiser Administrator username is required."
+        )
+
     if not helpdesk_user_id:
-        errors.append("Visualiser Helpdesk username is required.")
-    if admin_user_id and admin_user_id == helpdesk_user_id:
+        errors.append(
+            "Visualiser Helpdesk username is required."
+        )
+
+    if (
+        admin_user_id
+        and admin_user_id == helpdesk_user_id
+    ):
         errors.append(
             "Administrator and Helpdesk usernames must be different."
         )
 
-    if endpoint_source not in {"api", "sql"}:
-        errors.append("Invalid endpoint profiling source.")
-    elif endpoint_source == "sql":
-        if not config["sql_host"]:
-            errors.append(
-                "PostgreSQL Host is required when PostgreSQL "
-                "profiling is selected."
-            )
-        if not config["sql_password"]:
-            errors.append(
-                "PostgreSQL Password is required when PostgreSQL "
-                "profiling is selected."
-            )
-        elif (
-            config["sql_password"]
-            != request.form.get("sql_password_confirm", "")
-        ):
-            errors.append("PostgreSQL Password entries do not match.")
+    if not config["sql_host"]:
+        errors.append(
+            "PostgreSQL Host is required."
+        )
+
+    if not config["sql_password"]:
+        errors.append(
+            "PostgreSQL Password is required."
+        )
+    elif (
+        config["sql_password"]
+        != request.form.get(
+            "sql_password_confirm",
+            ""
+        )
+    ):
+        errors.append(
+            "PostgreSQL Password entries do not match."
+        )
 
     if errors:
-        return jsonify({
-            "success": False,
-            "errors": errors,
-        }), 400
 
-    validation = validate_setup_connectivity(config)
+        return jsonify(
+            {
+                "success": False,
+                "errors": errors,
+            }
+        ), 400
+
+    validation = validate_setup_connectivity(
+        config
+    )
 
     if not validation["success"]:
-        return jsonify({
-            "success": False,
-            "errors": validation["errors"],
-            "validation": validation["results"],
-        }), 400
+
+        return jsonify(
+            {
+                "success": False,
+                "errors": validation["errors"],
+                "validation": validation["results"],
+            }
+        ), 400
 
     try:
-        provisioning_login = build_provisioning_login(config)
+
+        provisioning_login = build_provisioning_login(
+            config
+        )
+
         plan = plan_visualiser_configuration(
             login=provisioning_login,
             admin_user_id=admin_user_id,
             helpdesk_user_id=helpdesk_user_id,
             nas_identifier=config["nas_identifier"],
         )
+
     except Exception:
+
         logger.exception(
             "Unable to build ClearPass AJAX provisioning plan."
         )
-        return jsonify({
-            "success": False,
-            "errors": [
-                "Unable to inspect the existing ClearPass configuration."
-            ],
-            "validation": validation["results"],
-        }), 500
+
+        return jsonify(
+            {
+                "success": False,
+                "errors": [
+                    "Unable to inspect the existing "
+                    "ClearPass configuration."
+                ],
+                "validation": validation["results"],
+            }
+        ), 500
 
     preview_errors = []
 
@@ -562,8 +633,7 @@ def setup_provisioning_preview():
 
     preview_success = (
         plan["success"]
-        and
-        not preview_errors
+        and not preview_errors
     )
 
     status_code = (
@@ -597,14 +667,6 @@ def setup():
         )
 
     if request.method == "POST":
-        endpoint_source = (
-            request.form.get(
-                "endpoint_source",
-                "api",
-            )
-            .strip()
-            .lower()
-        )
 
         setup_action = (
             request.form.get(
@@ -695,10 +757,8 @@ def setup():
                 "nas_identifier",
                 "clearpass-policy-visualiser",
             ).strip(),
-            # Endpoint Profiling
-            "endpoint_source": endpoint_source,
-            "sql_fallback": "true",
-            # PostgreSQL
+
+            # PostgreSQL Endpoint Profiling
             "sql_host": request.form.get(
                 "sql_host",
                 "",
@@ -847,45 +907,31 @@ def setup():
                 "ClearPass changes."
             )
 
+
         # -------------------------------------------------
-        # Endpoint profiling validation
+        # PostgreSQL Endpoint Profiling validation
         # -------------------------------------------------
 
-        if endpoint_source not in {
-            "api",
-            "sql",
-        }:
+        if not config["sql_host"]:
             errors.append(
-                "Invalid endpoint profiling source."
+                "PostgreSQL Host is required."
             )
 
-        # -------------------------------------------------
-        # PostgreSQL validation
-        # -------------------------------------------------
-
-        if endpoint_source == "sql":
-            if not config["sql_host"]:
-                errors.append(
-                    "PostgreSQL Host is required when PostgreSQL "
-                    "profiling is selected."
-                )
-
-            if not config["sql_password"]:
-                errors.append(
-                    "PostgreSQL Password is required when PostgreSQL "
-                    "profiling is selected."
-                )
-            elif not sql_password_confirm:
-                errors.append(
-                    "Confirm PostgreSQL Password is required."
-                )
-            elif (
-                config["sql_password"]
-                != sql_password_confirm
-            ):
-                errors.append(
-                    "PostgreSQL Password entries do not match."
-                )
+        if not config["sql_password"]:
+            errors.append(
+                "PostgreSQL Password is required."
+            )
+        elif not sql_password_confirm:
+            errors.append(
+                "Confirm PostgreSQL Password is required."
+            )
+        elif (
+            config["sql_password"]
+            != sql_password_confirm
+        ):
+            errors.append(
+                "PostgreSQL Password entries do not match."
+            )
 
         if errors:
             return render_setup(
@@ -1084,7 +1130,7 @@ def setup():
         )
 
         load_dotenv(
-            ".visualiser.env",
+            get_visualiser_env_file(),
             override=True,
         )
 
@@ -1548,9 +1594,7 @@ def refresh_cache():
 
     cp_cache.health_cache = check_clearpass()
     cp_cache.health_cache_time = time.time()
-    cp_cache.last_refresh = time.strftime(
-        "%d-%m-%Y %H:%M:%S"
-    )
+
 
     PROFILE_CACHE.clear()
     ENFORCEMENT_POLICY_CACHE.clear()
@@ -1637,6 +1681,10 @@ def refresh_cache():
     )
 
     cp_cache.initialised = True
+
+    cp_cache.last_refresh = time.strftime(
+        "%d-%m-%Y %H:%M:%S"
+    )
 
     logger.info(
         "Cache refresh complete."
