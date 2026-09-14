@@ -6,7 +6,7 @@ Visualise, analyse and troubleshoot Aruba ClearPass Services, Role Mapping Polic
   <img src="https://img.shields.io/badge/Python-3.11%2B-blue" alt="Python">
   <img src="https://img.shields.io/badge/Flask-Web_App-green" alt="Flask">
   <img src="https://img.shields.io/badge/Aruba-ClearPass-orange" alt="ClearPass">
-  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
+  <img src="https://img.shields.io/badge/License-Apache%202.0-yellow" alt="License">
 </p>
 
 ---
@@ -287,7 +287,7 @@ Visualiser configuration created by Initial Setup is stored locally in:
 .visualiser.env
 ```
 
-The application explicitly loads this file during startup. The legacy `config.yaml` configuration path has been removed, and the application no longer performs implicit loading of a conventional `.env` file.
+The application explicitly loads this file during startup. The legacy `config.yaml` configuration path has been removed, and the Visualiser application no longer implicitly loads application configuration from a conventional `.env` file. For Docker deployments, a project-level .env file may still be used by Docker Compose for deployment settings such as the container timezone.
 
 ```text
 Fresh Installation
@@ -721,7 +721,10 @@ clearpass-policy-visualiser
 │
 ├── screenshots/
 │
+├── LICENSE
+├── NOTICE
 └── README.md
+
 ```
 
 ---
@@ -837,6 +840,8 @@ To use another timezone, create a `.env` file in the project directory and set `
 TZ=Australia/Melbourne
 ```
 
+This Docker Compose `.env` file is used only for deployment settings such as the container timezone and is separate from the Visualiser `.visualiser.env` configuration created during Initial Setup.
+
 Then start the Visualiser normally:
 
 ```bash
@@ -878,7 +883,7 @@ On a new installation, the application starts without initialising ClearPass cac
 
 ## Initial Setup
 
-The Initial Setup wizard replaces the previous manual `.env` or `config.yaml` process.
+The Initial Setup wizard replaces the previous manual application configuration using `.env` or `config.yaml` process.
 
 ### RADIUS Authentication
 
@@ -1130,16 +1135,30 @@ Planned enhancements include:
 
 ### v1.6.0
 
+#### Licensing
+
+- Changed ClearPass Policy Visualiser licensing from the MIT License
+  to the Apache License, Version 2.0.
+- Added a `NOTICE` file containing project attribution information.
+
+#### Docker Deployment
+
 - Added Docker container deployment with Docker Compose.
 - Added Waitress as the production WSGI server.
 - Added persistent container storage for Visualiser configuration and Flask session secrets.
 - Added non-root container execution and restricted permissions for sensitive configuration files.
 - Added configurable container timezone support using the `TZ` environment variable.
 - Added persistent data path handling for native and container deployments.
+
+#### Endpoint Profiling
+
 - Changed endpoint profiling to use the ClearPass PostgreSQL database.
 - Removed REST API fallback for endpoint profiling when PostgreSQL is unavailable.
 - Updated Initial Setup to configure and validate PostgreSQL endpoint profiling access.
 - Improved endpoint profiling cache initialisation and logging.
+
+#### Cache Management
+
 - Updated cache refresh handling so Last Refresh reflects completion of a successful manual refresh.
 
 ### v1.5.3
@@ -1416,7 +1435,11 @@ For Docker deployments:
 
 ## License
 
-MIT License
+ClearPass Policy Visualiser is licensed under the Apache License,
+Version 2.0.
+
+See the `LICENSE` file for the full license terms and the `NOTICE`
+file for attribution information.
 
 ---
 
