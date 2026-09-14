@@ -3,10 +3,13 @@
 Visualise, analyse and troubleshoot Aruba ClearPass Services, Role Mapping Policies, Enforcement Policies and Enforcement Profiles.
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.11%2B-blue" alt="Python">
-  <img src="https://img.shields.io/badge/Flask-Web_App-green" alt="Flask">
-  <img src="https://img.shields.io/badge/Aruba-ClearPass-orange" alt="ClearPass">
-  <img src="https://img.shields.io/badge/License-Apache%202.0-yellow" alt="License">
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.11%2B-blue" alt="Python"></a>
+
+  <a href="https://flask.palletsprojects.com/"><img src="https://img.shields.io/badge/Flask-Web_App-green" alt="Flask"></a>
+
+  <a href="https://www.hpe.com/us/en/products/networking/clearpass-policy-manager.html"><img src="https://img.shields.io/badge/Aruba-ClearPass-orange" alt="ClearPass"></a>
+
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-yellow" alt="License"></a>
 </p>
 
 ---
