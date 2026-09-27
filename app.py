@@ -91,7 +91,10 @@ from cp_role_mapping import (
     build_role_mapping_reference_cache,
     get_role_mapping_details,
 )
-from cp_services import get_all_services, get_service
+from cp_services import (
+    get_all_services_with_hit_counts,
+    get_service,
+)
 from version import VERSION
 
 
@@ -1272,6 +1275,14 @@ def home():
         ).startswith("--------")
     ]
 
+    hit_counts = [
+        int(service.get("hit_count", 0))
+        for service in real_services
+    ]
+
+    top_hits = max(hit_counts, default=0)
+    least_hits = min(hit_counts, default=0)
+
     stats = {
         "total_services": len(real_services),
         "enabled_services": len(
@@ -1281,6 +1292,10 @@ def home():
                 if service.get("enabled")
             ]
         ),
+
+        "top_hits": top_hits,
+        "least_hits": least_hits,
+
         "tacacs_services": len(
             [
                 service
@@ -1601,7 +1616,7 @@ def refresh_cache():
     ROLE_MAPPING_CACHE.clear()
     ROLE_CACHE.clear()
 
-    cp_cache.services_cache = get_all_services()
+    cp_cache.services_cache = get_all_services_with_hit_counts()
     cp_cache.services_cache = sorted(
         cp_cache.services_cache,
         key=lambda service: service["order_no"],
@@ -1703,6 +1718,22 @@ def testservice(id):
 @login_required
 def service(id):
     service_data = get_service(id)
+
+    cached_service = next(
+        (
+            cached
+            for cached in cp_cache.services_cache
+            if str(cached.get("id")) == str(id)
+        ),
+        None,
+    )
+
+    if cached_service is not None:
+        service_data["hit_count"] = cached_service.get(
+            "hit_count",
+            0,
+        )
+
     graph = build_service_graph(
         service_data
     )
@@ -1738,7 +1769,7 @@ def initialise_cache():
         "Loading ClearPass services..."
     )
 
-    cp_cache.services_cache = get_all_services()
+    cp_cache.services_cache = get_all_services_with_hit_counts()
     cp_cache.services_cache = sorted(
         cp_cache.services_cache,
         key=lambda service: service["order_no"],

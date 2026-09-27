@@ -254,6 +254,17 @@
             background-color: #01A982;
             color: #001B14;
         }
+
+        .hit-count-info {
+            display: inline-block;
+            margin-left: 4px;
+            margin-right: 2px;
+            color: #00c9a7;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: help;
+            vertical-align: baseline;
+        }
                 
 	table {
     	    color: #E2E8F0 !important;
@@ -515,10 +526,20 @@
                 </div>
 
                 <div style="font-size:0.8rem;">
+                    Enabled:
                     <span class="status-ok">
                         {{ stats.enabled_services }}
                     </span>
-                    Enabled
+                </div>
+
+                <div style="font-size:0.8rem;">
+                    Top Hits:
+                    {{ "{:,}".format(stats.top_hits) }}
+                </div>
+
+                <div style="font-size:0.8rem;">
+                    Least Hits:
+                    {{ "{:,}".format(stats.least_hits) }}
                 </div>
 
             </div>
@@ -872,17 +893,54 @@
         <table class="table table-dark-custom table-hover">
             <thead>
                 <tr>
-                    <th>Order</th>
-                    <th>Name</th>
-                    <th>Type</th>
+                    <th
+                        id="orderHeader"
+                        style="cursor:pointer;"
+                        title="Sort by service order"
+                    >
+                        Order ↕
+                    </th>
+
+                    <th
+                        id="nameHeader"
+                        style="cursor:pointer;"
+                        title="Sort by service name"
+                    >
+                        Name ↕
+                    </th>
+
+                    <th
+                        id="typeHeader"
+                        style="cursor:pointer;"
+                        title="Sort by service type"
+                    >
+                        Type ↕
+                    </th>
+
+                    <th
+                        id="hitCountHeader"
+                        style="cursor:pointer;"
+                        title="Sort by hit count"
+                    >
+                        Hit Count
+                        <span
+                            class="hit-count-info"
+                            title="Current-hour Service matches. Counts reset at the start of each hour and update when Services are refreshed."
+                            aria-label="Current-hour Service matches. Counts reset at the start of each hour and update when Services are refreshed."
+                            onclick="event.stopPropagation();"
+                        >ⓘ</span>
+                        <span id="hitCountSortIndicator"> ↕</span>
+                    </th>
+
                     <th>Action</th>
                 </tr>
             </thead>
+
             <tbody id="serviceTable">
 
             {% for s in services %}
 
-                <tr>
+                <tr data-service-name="{{ s.name|e }}">
 
                     <td>{{ s.order_no }}</td>                  
                     <!--<td>{{ s.name }}</td> -->
@@ -925,8 +983,13 @@
 
                     </td>
                     
-                    <td>{{ s.type }}</td>
+                    <td class="service-type">
+                        {{ s.type }}
+                    </td>
 
+                    <td class="hit-count">
+                        {{ "{:,}".format(s.hit_count|default(0)) }}
+                    </td>
 
                     <td>
                         {% if s.name.startswith('-----') %}
@@ -1292,6 +1355,209 @@ document.getElementById("serviceSearch")
     });
 
 });
+
+const serviceTable =
+    document.getElementById("serviceTable");
+
+let activeSortColumn = null;
+let activeSortAscending = true;
+
+
+function getServiceRows() {
+    return Array.from(
+        serviceTable.querySelectorAll("tr")
+    );
+}
+
+
+function updateSortIndicators(
+    activeHeader,
+    ascending
+) {
+    const orderHeader =
+        document.getElementById("orderHeader");
+    const nameHeader =
+        document.getElementById("nameHeader");
+    const typeHeader =
+        document.getElementById("typeHeader");
+    const hitCountHeader =
+        document.getElementById("hitCountHeader");
+    const hitCountSortIndicator =
+        document.getElementById(
+            "hitCountSortIndicator"
+        );
+
+    orderHeader.textContent = "Order ↕";
+    nameHeader.textContent = "Name ↕";
+    typeHeader.textContent = "Type ↕";
+    hitCountSortIndicator.textContent = "↕";
+
+    if (activeHeader === orderHeader) {
+        orderHeader.textContent =
+            ascending ? "Order ↑" : "Order ↓";
+    }
+
+    if (activeHeader === nameHeader) {
+        nameHeader.textContent =
+            ascending ? "Name ↑" : "Name ↓";
+    }
+
+    if (activeHeader === typeHeader) {
+        typeHeader.textContent =
+            ascending ? "Type ↑" : "Type ↓";
+    }
+
+    if (activeHeader === hitCountHeader) {
+        hitCountSortIndicator.textContent =
+            ascending ? "↑" : "↓";
+    }
+}
+
+
+function sortServiceTable(
+    column,
+    dataType,
+    header
+) {
+    if (activeSortColumn === column) {
+        activeSortAscending =
+            !activeSortAscending;
+    } else {
+        activeSortColumn = column;
+
+        if (column === 3) {
+            // Hit Count starts highest to lowest.
+            activeSortAscending = false;
+        } else {
+            // Order, Name and Type start ascending.
+            activeSortAscending = true;
+        }
+    }
+
+    const rows = getServiceRows();
+
+    rows.sort(function (a, b) {
+        let aValue;
+        let bValue;
+
+        if (column === 1) {
+            aValue =
+                a.dataset.serviceName || "";
+
+            bValue =
+                b.dataset.serviceName || "";
+        } else {
+            aValue =
+                a.children[column]
+                    .textContent
+                    .trim();
+
+            bValue =
+                b.children[column]
+                    .textContent
+                    .trim();
+        }
+
+        if (dataType === "number") {
+            aValue = parseInt(
+                aValue.replace(/,/g, ""),
+                10
+            ) || 0;
+
+            bValue = parseInt(
+                bValue.replace(/,/g, ""),
+                10
+            ) || 0;
+
+            return activeSortAscending
+                ? aValue - bValue
+                : bValue - aValue;
+        }
+
+        const comparison =
+            aValue.localeCompare(
+                bValue,
+                undefined,
+                {
+                    sensitivity: "base"
+                }
+            );
+
+        return activeSortAscending
+            ? comparison
+            : -comparison;
+    });
+
+    rows.forEach(function (row) {
+        serviceTable.appendChild(row);
+    });
+
+    updateSortIndicators(
+        header,
+        activeSortAscending
+    );
+}
+
+
+const orderHeader =
+    document.getElementById("orderHeader");
+
+const nameHeader =
+    document.getElementById("nameHeader");
+
+const typeHeader =
+    document.getElementById("typeHeader");
+
+const hitCountHeader =
+    document.getElementById("hitCountHeader");
+
+
+orderHeader.addEventListener(
+    "click",
+    function () {
+        sortServiceTable(
+            0,
+            "number",
+            orderHeader
+        );
+    }
+);
+
+
+nameHeader.addEventListener(
+    "click",
+    function () {
+        sortServiceTable(
+            1,
+            "text",
+            nameHeader
+        );
+    }
+);
+
+
+typeHeader.addEventListener(
+    "click",
+    function () {
+        sortServiceTable(
+            2,
+            "text",
+            typeHeader
+        );
+    }
+);
+
+
+hitCountHeader.addEventListener(
+    "click",
+    function () {
+        sortServiceTable(
+            3,
+            "number",
+            hitCountHeader
+        );
+    }
+);
 
 </script>
 

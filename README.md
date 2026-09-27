@@ -46,6 +46,8 @@ Additional capabilities include:
 - Read-only ClearPass change review before provisioning
 - Idempotent creation and validation of required ClearPass objects
 - PostgreSQL endpoint profiling
+- Current-hour ClearPass Service Hit Counts using ClearPass Insight
+- Sortable Service inventory by Order, Name, Type and Hit Count
 - Read-only Impact Analysis for Enforcement Profiles
 - Read-only Impact Analysis for Enforcement Policies
 - Read-only Impact Analysis for Role Mapping Policies
@@ -56,7 +58,7 @@ The application uses ClearPass REST APIs secured with OAuth 2.0 Client Credentia
 
 Users authenticate against ClearPass using RADIUS, with application permissions derived from returned role attributes such as `Aruba-User-Role`.
 
-Endpoint profiling data is loaded directly from the ClearPass PostgreSQL database using the built-in `appexternal` account and the `tips_endpoint_profiles` table.
+Endpoint profiling data is loaded directly from the ClearPass PostgreSQL database using the built-in `appexternal` account and the `tips_endpoint_profiles` table. Current-hour Service Hit Counts are calculated from ClearPass Insight authentication records and refreshed with the Service cache.
 
 In the reference environment, PostgreSQL reduced endpoint fingerprint cache loading from approximately 74 seconds using the REST API to approximately 0.08 seconds.
 
@@ -314,6 +316,22 @@ Login
 
 The `.visualiser.env` file contains sensitive configuration and is excluded from Git.
 
+### Current-Hour Service Hit Counts
+
+The dashboard displays Insight-backed Hit Counts for configured ClearPass Services. Hit Counts represent Service matches recorded during the current clock hour.
+
+Features include:
+
+- Current-hour Hit Count for each configured Service
+- Dashboard Top Hits and Least Hits summaries
+- Sortable Service table by Order, Name, Type and Hit Count
+- Hit Count visibility on individual Service Visualise pages
+- Information tooltips explaining the current-hour scope
+- Hit Counts reset naturally at the start of each clock hour
+- Hit Counts are recalculated when **Refresh Services** rebuilds the Service cache
+
+Current-hour Hit Counts are derived from ClearPass Insight PostgreSQL authentication records using the built-in read-only `appexternal` account. ClearPass Service configuration continues to come from the ClearPass REST API.
+
 ### Service Visualisation
 
 Visualise complete ClearPass service flows including:
@@ -324,6 +342,8 @@ Visualise complete ClearPass service flows including:
 - Role Mapping Rules
 - Enforcement Policies
 - Enforcement Profiles
+
+The Service Information panel also displays the current-hour Hit Count for the selected Service. The value uses the same cached Insight data displayed on the dashboard, keeping the dashboard and individual Service views consistent.
 
 ### Interactive Policy Graph
 
@@ -568,7 +588,8 @@ Flask Web Application
     │       └── Endpoint Repository
     │
     └── PostgreSQL
-            └── Endpoint Profiling Cache
+            ├── Endpoint Profiling Cache
+            └── Insight Current-Hour Service Hit Counts
 ```
 
 ---
@@ -644,6 +665,23 @@ Initial Setup requests the PostgreSQL host, port, database, username, password a
 
 PostgreSQL access is required for endpoint profiling. If the PostgreSQL endpoint profiling cache cannot be loaded during application startup, cache initialisation stops rather than falling back to REST API endpoint profiling.
 
+### PostgreSQL Insight Service Hit Counts
+
+Current-hour Service Hit Counts are calculated from the ClearPass Insight PostgreSQL database using the built-in read-only `appexternal` account.
+
+The Visualiser queries:
+
+```text
+Database: insightdb
+Port: 5433
+Table: public.auth
+```
+Authentication records are counted by Service from the start of the current clock hour to the time the Service cache is refreshed.
+
+The existing PostgreSQL host, username, password and SSL mode configured for the Visualiser are reused for Insight access.
+
+If the Insight query succeeds and a Service has no authentication records during the current hour, its Hit Count is 0. Insight query failures are handled separately from genuine zero activity.
+
 ### Data Source Summary
 
 | Function | Data Source | Authentication |
@@ -660,6 +698,7 @@ PostgreSQL access is required for endpoint profiling. If the PostgreSQL endpoint
 | Guest Operator Profiles | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Endpoint Repository | ClearPass REST API | OAuth 2.0 Client Credentials |
 | Endpoint Profiling Cache | PostgreSQL | `appexternal` |
+| Current-Hour Service Hit Counts | PostgreSQL Insight (`insightdb`, port `5433`) | `appexternal` |
 
 ---
 
@@ -690,6 +729,7 @@ clearpass-policy-visualiser
 ├── cp_provision.py
 ├── cp_role_mapping.py
 ├── cp_services.py
+├── cp_insight_sql.py
 ├── cp_setup.py
 ├── cp_unused_objects.py
 ├── cp_impact_analysis.py
@@ -754,7 +794,8 @@ PyYAML is not a direct production dependency because the legacy YAML configurati
 - A ClearPass API Client with sufficient permissions to inspect and optionally create the required Policy Visualiser objects
 - Network connectivity from the Visualiser host to ClearPass
 - RADIUS configuration in ClearPass for Visualiser user authentication
-- PostgreSQL access using the built-in `appexternal` account for endpoint profiling
+- PostgreSQL access using the built-in `appexternal` account for endpoint profiling and Insight-backed Service Hit Counts
+- Network access to ClearPass PostgreSQL port `5433` for Insight Service Hit Counts
 
 ### Docker Deployment
 
@@ -1065,6 +1106,7 @@ On subsequent launches with a complete configuration, the Visualiser automatical
 Startup includes:
 
 - ClearPass service discovery
+- Current-hour Service Hit Count enrichment from ClearPass Insight
 - ClearPass health check
 - Endpoint profiling cache
 - Role cache
@@ -1080,6 +1122,10 @@ The Setup Complete page displays an animated loading overlay while the initial c
 ## Refreshing Cached Data
 
 The dashboard provides a cache refresh operation which rebuilds Visualiser data from ClearPass, including health, Services, Roles, Enforcement Profile references, Role Mapping references, Unused Object analysis and the Impact Analysis lookup index.
+
+Current-hour Service Hit Counts are also recalculated from ClearPass Insight whenever **Refresh Services** is selected.
+
+Hit Counts represent activity from the start of the current clock hour. When the hour changes, authentication records from the previous hour are no longer included the next time Services are refreshed.
 
 ---
 
@@ -1132,6 +1178,26 @@ Planned enhancements include:
 ---
 
 ## Changelog
+
+### v1.6.1
+
+#### Service Hit Counts
+
+- Added current-hour Service Hit Counts backed by ClearPass Insight PostgreSQL authentication data.
+- Added current-hour Top Hits and Least Hits summaries to the dashboard.
+- Added Hit Count visibility to the Configured Services table.
+- Added Hit Count visibility to individual Service Visualise pages.
+- Added ClearPass Insight PostgreSQL integration using `insightdb` on port `5433` with the built-in read-only `appexternal` account.
+- Added current-hour Hit Count refresh during application startup and **Refresh Services**.
+- Added an information tooltip explaining that Hit Counts cover the current clock hour and update when Services are refreshed.
+- Kept Insight query failures distinct from genuine zero Service activity.
+
+#### Service Table Sorting
+
+- Added sortable **Order**, **Name**, **Type** and **Hit Count** columns.
+- Added numeric sorting for Order and Hit Count.
+- Added ascending and descending Service name sorting.
+- Added persistent sort indicators while preserving the Hit Count information icon.
 
 ### v1.6.0
 
@@ -1415,6 +1481,7 @@ Administrators should:
 - Protect access to the Visualiser host
 - Use an appropriately scoped ClearPass API Client
 - Protect RADIUS and PostgreSQL credentials
+- Restrict ClearPass PostgreSQL connectivity to the access required for endpoint profiling and read-only Insight Service Hit Counts
 - Use appropriate TLS and certificate verification settings
 - Use the read-only ClearPass change review before assisted configuration
 - Confirm any object reported as a conflict
@@ -1461,6 +1528,6 @@ Always validate configuration changes before applying them to production environ
 
 ---
 
-**ClearPass Policy Visualiser v1.6.0**
+**ClearPass Policy Visualiser v1.6.1**
 
 Visualise. Analyse. Troubleshoot.
