@@ -1168,12 +1168,10 @@ These figures are observations from the reference environment and are not guaran
 
 Planned enhancements include:
 
-- Administrator-only connection configuration page
-- Wider Role-sharing analysis across Role Mapping Policies
-- Secure validation and update of saved ClearPass, RADIUS and PostgreSQL connection settings
-- Enhanced role-based authorisation controls
-- Standalone packaged release
+- Secure administrator-only configuration management with granular role-based access controls
+- Shared Role analysis across Role Mapping Policies
 - Multi-server ClearPass support
+- Native ClearPass Extension integration
 
 ---
 
