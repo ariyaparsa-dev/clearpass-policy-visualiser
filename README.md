@@ -1168,9 +1168,8 @@ These figures are observations from the reference environment and are not guaran
 
 Planned enhancements include:
 
+- Multi-environment ClearPass support
 - Secure administrator-only configuration management with granular role-based access controls
-- Shared Role analysis across Role Mapping Policies
-- Multi-server ClearPass support
 - Native ClearPass Extension integration
 
 ---
