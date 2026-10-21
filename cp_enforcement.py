@@ -6,9 +6,11 @@ from pyclearpass import *
 from cp_client import get_login
 from cp_endpoint import get_matching_endpoint_count
 
-PROFILE_CACHE = {}
-ENFORCEMENT_POLICY_CACHE = {}
-ENFORCEMENT_POLICY_LOOKUP_CACHE = {}
+from cp_env import ScopedDict
+
+PROFILE_CACHE = ScopedDict("profile_cache")
+ENFORCEMENT_POLICY_CACHE = ScopedDict("enforcement_policy_cache")
+ENFORCEMENT_POLICY_LOOKUP_CACHE = ScopedDict("enforcement_policy_lookup_cache")
 
 def build_qualified_attribute(
     condition_type,

@@ -4,10 +4,13 @@ from cp_endpoint import (
     get_matching_rule_count,
     get_rule_match_label
 )
+from cp_env import ScopedDict
 
 from cp_client import get_login
-ROLE_MAPPING_CACHE = {}
-ROLE_CACHE = {}
+from cp_env import ScopedDict
+
+ROLE_MAPPING_CACHE = ScopedDict("role_mapping_cache")
+ROLE_CACHE = ScopedDict("role_cache")
 
 def build_qualified_attribute(
     condition_type,

@@ -1,4 +1,5 @@
 import os
+import cp_env
 import socket
 import struct
 import hashlib
@@ -31,7 +32,7 @@ class RadiusAuthenticationError(Exception):
 
 
 def _get_env_int(name, default):
-    value = os.getenv(name, str(default))
+    value = cp_env.getenv(name, str(default))
 
     try:
         return int(value)
@@ -48,7 +49,7 @@ def _get_env_int(name, default):
 
 
 def _parse_csv_env(name, default=""):
-    value = os.getenv(name, default)
+    value = cp_env.getenv(name, default)
 
     return [
         item.strip()
@@ -355,7 +356,7 @@ def _determine_role(reply_attributes):
     Otherwise default to AUTH_DEFAULT_ROLE.
     """
 
-    default_role = os.getenv(
+    default_role = cp_env.getenv(
         "AUTH_DEFAULT_ROLE",
         "ReadOnly"
     )
@@ -408,8 +409,8 @@ def authenticate_radius(username, password):
             }
     """
 
-    radius_server = os.getenv("RADIUS_SERVER")
-    radius_secret = os.getenv("RADIUS_SECRET")
+    radius_server = cp_env.getenv("RADIUS_SERVER")
+    radius_secret = cp_env.getenv("RADIUS_SECRET")
 
     if not radius_server:
         raise RadiusAuthenticationError(
@@ -436,7 +437,7 @@ def authenticate_radius(username, password):
         2
     )
 
-    nas_identifier = os.getenv(
+    nas_identifier = cp_env.getenv(
         "RADIUS_NAS_IDENTIFIER",
         "clearpass-policy-visualiser"
     )

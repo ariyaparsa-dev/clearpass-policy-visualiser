@@ -782,7 +782,7 @@
     <div class="health-item">
         <strong>Server</strong>
         <span class="status-ok">
-        {{ health.server }}
+        {{ health.server }}{% if health.version %} <span style="color:#9CA3AF; font-weight:400; white-space:nowrap;">v{{ health.version }}</span>{% endif %}
         </span>
     </div>
 
