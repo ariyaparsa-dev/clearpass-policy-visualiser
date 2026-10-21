@@ -1,8 +1,9 @@
 """
 Per-environment context for ClearPass Policy Visualiser.
 
-Phase 1: every request and thread runs in the "default" environment, so
-behaviour is identical to v1.6.1. Phase 2 will add further environments.
+Every request and thread runs in one active environment. The "default"
+environment is the existing .visualiser.env loaded into os.environ, so
+behaviour is identical to v1.6.1 when no other environment is configured.
 """
 
 import contextlib
@@ -47,6 +48,10 @@ class EnvState:
         self.unused_objects_cache = None
         self.initialised = False
 
+        # Lazy-load tracking: not_loaded, loading, ready or error.
+        self.load_status = "not_loaded"
+        self.load_error = None
+
         self.endpoint_cache = None
         self.attribute_catalog_cache = None
         self.fingerprint_cache = {}
@@ -88,6 +93,14 @@ def use(env_id):
 
 
 def getenv(name, default=None):
+    """
+    Drop-in replacement for os.getenv() for per-environment settings.
+
+    The default environment reads os.environ exactly as before. Other
+    environments read only their own settings and never fall back to
+    os.environ for scoped keys, so credentials cannot leak between
+    environments.
+    """
     env_id = _active.get()
 
     scoped = (
@@ -98,9 +111,9 @@ def getenv(name, default=None):
     if env_id == DEFAULT_ENV_ID or not scoped:
         return os.getenv(name, default)
 
-    raise NotImplementedError(
-        "Per-environment settings are added in phase 2."
-    )
+    from cp_environments import environment_settings
+
+    return environment_settings(env_id).get(name, default)
 
 
 class ScopedDict(MutableMapping):

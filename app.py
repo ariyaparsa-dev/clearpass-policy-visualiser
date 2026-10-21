@@ -3,7 +3,7 @@ import os
 import secrets
 import time
 from datetime import timedelta
-
+from cp_env_web import init_environment_support 
 from dotenv import load_dotenv
 from flask import (
     Flask,
@@ -20,7 +20,6 @@ from flask_login import current_user, login_required
 from pyclearpass import ClearPassAPILogin
 
 from auth import login_manager
-from auth.models import RadiusUser
 from auth.routes import auth_bp
 from cp_provision import (
     plan_visualiser_configuration,
@@ -193,31 +192,6 @@ limiter = Limiter(
 limiter.limit("10 per minute")(
     app.view_functions["auth.login"]
 )
-
-
-@login_manager.user_loader
-def load_user(username):
-    if not username:
-        return None
-
-    try:
-        role = session.get(
-            "role",
-            "ReadOnly",
-        )
-        radius_attributes = session.get(
-            "radius_attributes",
-            {},
-        )
-    except Exception:
-        role = "ReadOnly"
-        radius_attributes = {}
-
-    return RadiusUser(
-        username=username,
-        role=role,
-        radius_attributes=radius_attributes,
-    )
 
 
 @app.context_processor
@@ -2839,6 +2813,9 @@ def role_impact_analysis(
         impact=impact,
         version=VERSION,
     )
+
+
+init_environment_support(app, initialise_cache)
 
 if __name__ == "__main__":
     if is_setup_complete(log_missing=True):
