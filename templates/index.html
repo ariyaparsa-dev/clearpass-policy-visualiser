@@ -473,6 +473,13 @@
             </form>
             {% endif %}
 
+            {% if current_user.is_authenticated and current_user.role == 'Admin' %}
+            <a href="{{ url_for('env_admin.index') }}"
+            style="font-size:0.9rem; color:#01A982; text-decoration:none; font-weight:600;">
+                Environments
+            </a>
+            {% endif %}
+
             {% if current_user.is_authenticated %}
             <div style="font-size:0.9rem; color:#E2E8F0;">
                 Logged in as
@@ -528,12 +535,12 @@
 
                 <div style="font-size:0.8rem;">
                     Top Hits:
-                    {{ "{:,}".format(stats.top_hits) }}
+                    {% if stats.top_hits is none %}n/a{% else %}{{ "{:,}".format(stats.top_hits) }}{% endif %}
                 </div>
 
                 <div style="font-size:0.8rem;">
                     Least Hits:
-                    {{ "{:,}".format(stats.least_hits) }}
+                    {% if stats.least_hits is none %}n/a{% else %}{{ "{:,}".format(stats.least_hits) }}{% endif %}
                 </div>
 
             </div>
@@ -982,7 +989,7 @@
                     </td>
 
                     <td class="hit-count">
-                        {{ "{:,}".format(s.hit_count|default(0)) }}
+                        {% if s.hit_count is none %}n/a{% else %}{{ "{:,}".format(s.hit_count|default(0)) }}{% endif %}
                     </td>
 
                     <td>

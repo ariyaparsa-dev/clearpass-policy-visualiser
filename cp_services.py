@@ -40,16 +40,29 @@ def get_all_services_with_hit_counts():
     Return all configured ClearPass Services enriched with
     current-hour Hit Count data from ClearPass Insight.
 
-    A Service with no Insight authentication records during
-    the current hour receives a Hit Count of zero.
+    A Service with no Insight authentication records during the current
+    hour receives a Hit Count of zero.
 
-    Insight database failures are raised to the caller rather
-    than being presented as zero activity.
+    If Insight cannot be queried, every Service gets a Hit Count of None,
+    which the pages show as "n/a". An Insight problem therefore never
+    stops an environment loading, and is never shown as zero activity.
     """
 
     services = get_all_services()
 
-    hit_counts = get_current_hour_service_hit_counts()
+    try:
+        hit_counts = get_current_hour_service_hit_counts()
+    except Exception as exc:
+        logger.warning(
+            "Service Hit Counts are unavailable: %s: %s",
+            type(exc).__name__,
+            exc,
+        )
+
+        for service in services:
+            service["hit_count"] = None
+
+        return services
 
     for service in services:
         service_name = str(

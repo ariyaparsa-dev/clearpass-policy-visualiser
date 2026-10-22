@@ -99,7 +99,7 @@ from version import VERSION
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
+    format="%(asctime)s %(levelname)s %(env_tag)s%(message)s",
     datefmt="%d-%m-%Y %H:%M:%S",
 )
 
@@ -1250,12 +1250,13 @@ def home():
     ]
 
     hit_counts = [
-        int(service.get("hit_count", 0))
+        int(service["hit_count"])
         for service in real_services
+        if service.get("hit_count") is not None
     ]
 
-    top_hits = max(hit_counts, default=0)
-    least_hits = min(hit_counts, default=0)
+    top_hits = max(hit_counts) if hit_counts else None
+    least_hits = min(hit_counts) if hit_counts else None
 
     stats = {
         "total_services": len(real_services),

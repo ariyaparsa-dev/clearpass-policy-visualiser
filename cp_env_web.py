@@ -7,6 +7,7 @@ app, login manager and initialise_cache() exist. It adds:
 - the active-environment request hooks
 - the per-environment login lookup (Flask-Login user loader)
 - lazy background loading of non-default environments
+- the Environments administration page
 - the environment selector context for templates
 """
 
@@ -86,11 +87,18 @@ def _start_load(env_id, initialise_cache):
         try:
             # New threads start on the default environment, so be explicit.
             with cp_env.use(env_id):
+                for message in cp_environments.check_environment_hosts(env_id):
+                    logger.warning(message)
+
                 initialise_cache()
-            state.load_status = "ready"
-            logger.info("Environment '%s' loaded.", env_id)
+
+                state.load_status = "ready"
+                logger.info("Environment '%s' loaded.", cp_env.display_name(env_id))
         except Exception as exc:
-            logger.exception("Environment '%s' failed to load.", env_id)
+            with cp_env.use(env_id):
+                logger.exception(
+                    "Environment '%s' failed to load.", cp_env.display_name(env_id)
+                )
             state.load_error = type(exc).__name__
             state.load_status = "error"
 
@@ -100,11 +108,22 @@ def _start_load(env_id, initialise_cache):
         daemon=True,
     ).start()
 
-    logger.info("Loading environment '%s' in the background...", env_id)
+    logger.info(
+        "Loading environment '%s' in the background...",
+        cp_env.display_name(env_id),
+    )
+
     return True
 
 
 def init_environment_support(app, initialise_cache):
+    # ---------------------------------------------------------------
+    # Environments administration page
+    # ---------------------------------------------------------------
+    from env_admin import env_admin_bp
+
+    app.register_blueprint(env_admin_bp)
+
     # ---------------------------------------------------------------
     # Per-environment login lookup
     # ---------------------------------------------------------------
@@ -133,6 +152,12 @@ def init_environment_support(app, initialise_cache):
 
         g._cpv_env_token = cp_env.activate(env_id)
 
+        # Run first, so request logging and every other hook see the
+        # environment. log_request is registered earlier, in app.py.
+        hooks = app.before_request_funcs.setdefault(None, [])
+        hooks.remove(activate_environment)
+        hooks.insert(0, activate_environment)
+
     @app.teardown_request
     def deactivate_environment(exception=None):
         token = g.pop("_cpv_env_token", None)
@@ -157,7 +182,13 @@ def init_environment_support(app, initialise_cache):
         if env_id == cp_env.DEFAULT_ENV_ID:
             return None
 
-        if request.endpoint in _EXEMPT_ENDPOINTS or request.endpoint is None:
+        endpoint = request.endpoint
+
+        if (
+            endpoint is None
+            or endpoint in _EXEMPT_ENDPOINTS
+            or endpoint.startswith("env_admin.")
+        ):
             return None
 
         if not current_user.is_authenticated:
@@ -257,3 +288,5 @@ def init_environment_support(app, initialise_cache):
             "environments": environments,
             "active_environment": active,
         }
+    # Load the display names now, so startup log lines are tagged too.
+    cp_environments.list_environments()

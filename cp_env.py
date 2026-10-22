@@ -8,6 +8,7 @@ behaviour is identical to v1.6.1 when no other environment is configured.
 
 import contextlib
 import contextvars
+import logging
 import os
 import threading
 from collections.abc import MutableMapping
@@ -73,6 +74,18 @@ def current_state():
             state = EnvState(env_id)
             _states[env_id] = state
         return state
+
+
+def peek_state(env_id):
+    """Return an environment's state without creating it."""
+    with _states_lock:
+        return _states.get(env_id)
+
+
+def drop_state(env_id):
+    """Forget an environment's cached data. It reloads on next use."""
+    with _states_lock:
+        _states.pop(env_id, None)
 
 
 def activate(env_id):
@@ -142,3 +155,46 @@ class ScopedDict(MutableMapping):
 
     def __repr__(self):
         return f"ScopedDict({self._name!r}, {self._store()!r})"
+
+
+# -------------------------------------------------------------------
+# Logging: tag records with the active environment.
+#
+# Use %(env_tag)s in the log format. With a single environment the tag is
+# empty, so the log looks exactly as it always has. With two or more it is
+# the environment's display name, for example "[Prod_Cluster] ".
+# -------------------------------------------------------------------
+
+_display_names = {}
+
+
+def set_display_names(names):
+    """Remember each environment's display name for log tags."""
+    global _display_names
+    _display_names = dict(names)
+
+
+def display_name(env_id):
+    return _display_names.get(env_id, env_id)
+
+
+def _env_tag(env_id):
+    if len(_display_names) <= 1:
+        return ""
+
+    return f"[{display_name(env_id)}] "
+
+
+if not getattr(logging, "_cpv_env_factory_installed", False):
+    _previous_factory = logging.getLogRecordFactory()
+
+    def _record_factory(*args, **kwargs):
+        record = _previous_factory(*args, **kwargs)
+        env_id = _active.get()
+        record.env = env_id
+        record.env_tag = _env_tag(env_id)
+        return record
+
+    logging.setLogRecordFactory(_record_factory)
+    logging._cpv_env_factory_installed = True
+    
