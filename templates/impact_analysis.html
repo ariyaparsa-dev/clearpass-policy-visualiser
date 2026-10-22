@@ -14,6 +14,10 @@
     <title>
         Impact Analysis - {{ impact.object.name }}
     </title>
+    <meta
+        name="cpv-environment"
+        content="{{ active_environment.name if active_environment else '' }}"
+    >
 
     <link
         rel="icon"
@@ -789,18 +793,11 @@
 
 <body>
 
-    <nav class="navbar">
-
+    <nav class="navbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
         <span class="navbar-brand">
-
-            <span class="brand-green">
-                ClearPass
-            </span>
-
-            Policy Visualiser
-
+            <span class="brand-green">ClearPass</span> Policy Visualiser
         </span>
-
+        {% with indicator_only=true %}{% include '_environment_nav.html' %}{% endwith %}
     </nav>
 
 
@@ -823,7 +820,7 @@
                 <div class="print-report-metadata">
                     ClearPass Policy Visualiser{% if version %} v{{ version }}{% endif %}
                     <br>
-                    Exported: <span id="printExportTimestamp"></span>
+                    {% if active_environment %}Environment: {{ active_environment.name }}<br>{% endif %}Exported: <span id="printExportTimestamp"></span>
                 </div>
 
             </div>
@@ -1463,6 +1460,26 @@
                     .toISOString()
                     .split("T")[0];
 
+            const environmentMeta =
+                document.querySelector(
+                    'meta[name="cpv-environment"]'
+                );
+
+            const safeEnvironment =
+                (
+                    environmentMeta
+                        ? environmentMeta.getAttribute("content")
+                        : ""
+                )
+                .replace(
+                    /[^a-zA-Z0-9_-]+/g,
+                    "_"
+                )
+                .replace(
+                    /^_+|_+$/g,
+                    ""
+                );
+
             return (
                 `${safeObjectName}_`
                 +
@@ -1471,6 +1488,12 @@
                 `Impact_Analysis_`
                 +
                 `${date}`
+                +
+                (
+                    safeEnvironment
+                        ? `_${safeEnvironment}`
+                        : ""
+                )
             );
 
         }
