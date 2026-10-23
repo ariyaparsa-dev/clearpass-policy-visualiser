@@ -48,10 +48,12 @@
 
     {% if current_user.is_authenticated and current_user.role == 'Admin' %}
     <a href="{{ url_for('env_admin.index') }}"
-       style="font-size:0.9rem; color:#01A982; text-decoration:none; font-weight:600;">
-        Environments
+        class="btn btn-sm btn-outline-success"
+        title="Add, edit or remove ClearPass environments">
+        &#9881; Manage environments
     </a>
     {% endif %}
+    
     {% endif %}
 
 </div>

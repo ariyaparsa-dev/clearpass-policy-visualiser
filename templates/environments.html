@@ -80,11 +80,7 @@
                             {% if e.is_active %}<span class="badge ms-2" style="background:#01A982;color:#001B14;">Current</span>{% endif %}
                         </td>
                         <td class="muted">{{ e.host or '-' }}</td>
-                        <td>
-                            <span class="{% if e.status == 'Ready' %}status-ready{% elif e.status == 'Loading' %}status-loading{% elif e.status == 'Error' %}status-error{% else %}muted{% endif %}">
-                                {{ e.status }}
-                            </span>
-                        </td>
+                        <td><span data-env-status data-env-id="{{ e.id }}" class="{% if e.status == 'Ready' %}status-ready{% elif e.status == 'Loading' %}status-loading{% elif e.status == 'Error' %}status-error{% else %}muted{% endif %}">{{ e.status }}</span></td>
                         <td class="text-end">
                             <a href="{{ url_for('env_admin.edit', env_id=e.id) }}" class="btn btn-sm btn-outline-success">Edit</a>
                             {% if not e.is_default and not e.is_active %}
@@ -108,5 +104,59 @@
         </div>
     </div>
 </div>
+
+<script>
+/* While an environment is loading, keep its Status up to date without
+   reloading the page. Nothing is polled when no environment is loading. */
+(function () {
+    var cells = document.querySelectorAll("[data-env-status]");
+    var statusUrl = {{ url_for('env_admin.status') | tojson }};
+    var classes = {
+        "Ready": "status-ready",
+        "Loading": "status-loading",
+        "Error": "status-error"
+    };
+    var failures = 0;
+
+    function anyLoading() {
+        for (var i = 0; i < cells.length; i++) {
+            if (cells[i].textContent.trim() === "Loading") { return true; }
+        }
+        return false;
+    }
+
+    function apply(data) {
+        for (var i = 0; i < cells.length; i++) {
+            var value = data[cells[i].dataset.envId];
+            if (value) {
+                cells[i].textContent = value;
+                cells[i].className = classes[value] || "muted";
+            }
+        }
+    }
+
+    function poll() {
+        fetch(statusUrl, {
+            headers: { "Accept": "application/json" },
+            credentials: "same-origin"
+        })
+            .then(function (response) {
+                if (!response.ok) { throw new Error("status " + response.status); }
+                return response.json();
+            })
+            .then(function (data) {
+                failures = 0;
+                apply(data);
+                if (anyLoading()) { window.setTimeout(poll, 3000); }
+            })
+            .catch(function () {
+                failures += 1;
+                if (failures < 20) { window.setTimeout(poll, 10000); }
+            });
+    }
+
+    if (anyLoading()) { window.setTimeout(poll, 3000); }
+})();
+</script>
 </body>
 </html>

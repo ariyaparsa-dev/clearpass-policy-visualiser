@@ -457,6 +457,7 @@
                 {% if environments|length > 1 %}
                 <select name="environment"
                         onchange="this.form.submit()"
+                        title="Switch environment"
                         style="background:#111827; color:#E2E8F0;
                                border:1px solid #01A982; border-radius:6px;
                                font-size:0.95rem; padding:6px 12px;">
@@ -475,8 +476,9 @@
 
             {% if current_user.is_authenticated and current_user.role == 'Admin' %}
             <a href="{{ url_for('env_admin.index') }}"
-            style="font-size:0.9rem; color:#01A982; text-decoration:none; font-weight:600;">
-                Environments
+               class="btn btn-sm btn-outline-success"
+               title="Add, edit or remove ClearPass environments">
+                &#9881; Manage environments
             </a>
             {% endif %}
 
@@ -484,7 +486,7 @@
             <div style="font-size:0.9rem; color:#E2E8F0;">
                 Logged in as
                 <strong>{{ current_user.username }}</strong>
-                <span style="margin-left:6px; color:#01A982; font-weight:600;">
+                <span style="margin-left:6px; color:#9CA3AF; font-weight:600;">
                     ({{ current_user.role }})
                 </span>
                 <a href="{{ url_for('auth.logout') }}"
