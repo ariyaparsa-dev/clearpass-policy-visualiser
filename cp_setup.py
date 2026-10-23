@@ -2,6 +2,12 @@ import os
 import socket
 import logging
 
+from cp_netdiag import (
+    explain_api_failure,
+    failure_message,
+    reset_run,
+    tcp_probe,
+)
 from urllib.parse import urlparse
 
 import psycopg
@@ -181,14 +187,20 @@ def test_clearpass_connectivity(config):
         )
 
         return {
-            "success": False,
-            "message": (
-                "Unable to connect to the "
-                "ClearPass server at "
-                f"{host}:{port}. "
-                "Check the server address and "
-                "network connectivity."
-            )
+              "success": False,
+              "message": failure_message(
+                  host,
+                  port,
+                  extra_ports=(
+                      int(config["sql_port"]),
+                  ) if str(config.get("sql_port", "")).isdigit()
+                    and config.get("sql_host") == host
+                    else (),
+                  prefix=(
+                      "Unable to connect to the "
+                      f"ClearPass server at {host}:{port}."
+                  ),
+              )
         }
 
     logger.info(
@@ -265,14 +277,21 @@ def test_clearpass_api(config):
             )
 
             return {
-                "success": False,
-                "message": (
-                    "Unable to authenticate to the "
-                    "ClearPass REST API. "
-                    "Check the API Client ID and "
-                    "Client Secret."
-                )
-            }
+                  "success": False,
+                  "message": (
+                      explain_api_failure(
+                          None,
+                          config["clearpass_api_url"],
+                          verify_ssl,
+                      )
+                      or (
+                          "Unable to authenticate to the "
+                          "ClearPass REST API. "
+                          "Check the API Client ID and "
+                          "Client Secret."
+                      )
+                  )
+              }
 
         # -------------------------------------------------
         # Validate API response
@@ -320,22 +339,19 @@ def test_clearpass_api(config):
             }
 
     except Exception as exc:
-
-        logger.warning(
-            "ClearPass REST API validation "
-            "failed: %s",
-            exc
-        )
-
-        return {
-            "success": False,
-            "message": (
-                "Unable to authenticate to the "
-                "ClearPass REST API. "
-                "Check the API URL, Client ID, "
-                "Client Secret and SSL setting."
-            )
-        }
+          logger.warning(
+              "ClearPass REST API validation "
+              "failed: %s",
+              exc
+          )
+          return {
+              "success": False,
+              "message": explain_api_failure(
+                  exc,
+                  config["clearpass_api_url"],
+                  verify_ssl,
+              )
+          }
 
     logger.info(
         "ClearPass REST API validation successful."
@@ -425,6 +441,28 @@ def test_postgresql(config):
             exc
         )
 
+        # If the TCP port itself is not reachable, explain the
+        # network problem. If it is reachable, the cause is more
+        # likely the credentials or database name.
+        try:
+            sql_host = config["sql_host"]
+            sql_port = int(config["sql_port"])
+
+            if tcp_probe(sql_host, sql_port) != "open":
+                return {
+                    "success": False,
+                    "message": failure_message(
+                        sql_host,
+                        sql_port,
+                        prefix=(
+                            "Unable to connect to PostgreSQL at "
+                            f"{sql_host}:{sql_port}."
+                        ),
+                    )
+                }
+        except Exception:
+            pass
+
         return {
             "success": False,
             "message": (
@@ -440,21 +478,15 @@ def test_postgresql(config):
         if cursor is not None:
 
             try:
-
                 cursor.close()
-
             except Exception:
-
                 pass
 
         if connection is not None:
 
             try:
-
                 connection.close()
-
             except Exception:
-
                 pass
 
     logger.info(
@@ -486,6 +518,8 @@ def validate_setup_connectivity(config):
     logger.info(
         "Validating initial setup connectivity..."
     )
+
+    reset_run()
 
     results = {
         "clearpass": None,
