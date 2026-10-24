@@ -17,8 +17,11 @@ allows it for the container's group, so the result can be "unavailable".
 """
 
 import errno
+import hashlib
+import hmac
 import logging
 import os
+import re
 import socket
 import struct
 import threading
@@ -541,6 +544,35 @@ def explain_api_failure(exc, api_url, verify_ssl=False):
             "proxy settings of the Visualiser container."
         )
 
+    if "404" in text and "not found" in text:
+        if parsed.netloc and parsed.path.rstrip("/") != "/api":
+            suggested = f"{parsed.scheme or 'https'}://{parsed.netloc}/api"
+
+            return (
+                f"The server at {target} answered, but there is no ClearPass "
+                "REST API at that path. The URL should end in /api. "
+                f"Try: {suggested}"
+            )
+
+        return (
+            f"The server at {target} answered with 'Not Found'. Check that "
+            "this is the ClearPass server and that the REST API is enabled."
+        )
+
+    if "405" in text and "method not allowed" in text:
+        if advice:
+            return (
+                f"The server at {target} answered the sign-in request with "
+                "'Method Not Allowed'. This usually happens when an http:// "
+                "URL is redirected to HTTPS." + advice
+            )
+
+        return (
+            f"The server at {target} answered the sign-in request with "
+            "'Method Not Allowed'. Check that the URL ends in /api and that "
+            "this is the ClearPass server."
+        )
+
     if "refused" in text:
         return (
             f"{target} refused the connection. Nothing is listening on that "
@@ -566,13 +598,60 @@ def explain_api_failure(exc, api_url, verify_ssl=False):
         "Check the API URL, Client ID, Client Secret and SSL setting."
     )
 
+
+# -------------------------------------------------------------------
+# PostgreSQL failures after the TCP port has been shown to be open
+# -------------------------------------------------------------------
+
+def explain_postgres_failure(exc, host, port, user):
+    """
+    Explain a PostgreSQL connection failure that happened although the TCP
+    port is open, so the cause is the server's answer and not the network.
+
+    The connection uses sslmode=prefer, so a failed TLS attempt is retried
+    without TLS and the exception carries both errors. A password failure on
+    the first attempt is the real cause, even when the retry then fails with
+    a pg_hba.conf message, so it is checked first.
+
+    Returns None when the error is not recognised; the caller then keeps its
+    generic message. Nothing secret is ever included.
+    """
+    if exc is None:
+        return None
+
+    text = _exception_text(exc)
+    target = f"{host}:{port}"
+    account = f"'{user}'" if user else "the account"
+
+    if "password authentication failed" in text:
+        return (
+            f"PostgreSQL at {target} rejected the password for {account}. "
+            "Check the External PostgreSQL Password in ClearPass "
+            "(Administration > Server Manager > Server Configuration > "
+            "Cluster-Wide Parameters > Database)."
+        )
+
+    match = re.search(r'no pg_hba\.conf entry for host "([^"]+)"', text)
+
+    if match:
+        return (
+            f"ClearPass is not allowing PostgreSQL connections from "
+            f"{match.group(1)} for {account}. Check that this address is "
+            "allowed to reach the ClearPass database."
+        )
+
+    if "timeout expired" in text or "timed out" in text:
+        return (
+            f"The connection to PostgreSQL at {target} was made, but the "
+            "server did not answer in time."
+        )
+
+    return None
+
+
 # -------------------------------------------------------------------
 # RADIUS reachability probe
 # -------------------------------------------------------------------
-
-import hashlib
-import hmac
-
 
 def _radius_attr(attr_type, value):
     return struct.pack("!BB", attr_type, len(value) + 2) + value
@@ -603,9 +682,6 @@ def _build_access_request(
     Return (packet_bytes, request_authenticator, identifier).
 
     Message-Authenticator (RFC 3579) is optional and is left out by default.
-    Against ClearPass, a request that carried one was silently dropped while
-    the same request without it was answered, even though the shared secret
-    was right, so it is only added when asked for.
     """
     identifier = os.urandom(1)[0]
     authenticator = os.urandom(16)
@@ -803,4 +879,3 @@ def probe_radius(
             "usually the Docker host's, not the container's."
         ),
     }
-
