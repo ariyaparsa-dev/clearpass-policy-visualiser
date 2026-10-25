@@ -1,6 +1,6 @@
 import logging
 import os
-
+import cp_env
 import psycopg
 from dotenv import load_dotenv
 from psycopg.rows import dict_row
@@ -35,13 +35,13 @@ def get_current_hour_service_hit_counts():
     cannot be mistaken for genuine zero hit counts.
     """
 
-    sql_host = os.getenv("CP_SQL_HOST")
-    sql_username = os.getenv(
+    sql_host = cp_env.getenv("CP_SQL_HOST")
+    sql_username = cp_env.getenv(
         "CP_SQL_USERNAME",
         "appexternal",
     )
-    sql_password = os.getenv("CP_SQL_PASSWORD")
-    sql_sslmode = os.getenv(
+    sql_password = cp_env.getenv("CP_SQL_PASSWORD")
+    sql_sslmode = cp_env.getenv(
         "CP_SQL_SSLMODE",
         "prefer",
     )

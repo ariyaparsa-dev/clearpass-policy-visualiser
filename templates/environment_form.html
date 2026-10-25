@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'Add environment' if mode == 'new' else 'Edit environment' }} - ClearPass Policy Visualiser</title>
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+    <style>
+        :root {
+            --hpe-green: #01A982;
+            --dark-bg: #0B111B;
+            --dark-card: #151D29;
+            --dark-card-2: #1B2432;
+            --border: #2D3748;
+            --text: #E2E8F0;
+        }
+        body { background: var(--dark-bg); color: var(--text); min-height: 100vh; }
+        .navbar { background-color: #111827; border-bottom: 3px solid var(--hpe-green); }
+        .brand-green { color: var(--hpe-green); font-weight: 700; }
+        .main-card { background: var(--dark-card); border: 1px solid var(--border); border-radius: 12px; }
+        .card-header-custom { background: var(--dark-card-2); border-bottom: 1px solid var(--border);
+            border-radius: 12px 12px 0 0; padding: 12px 16px; }
+        .section-title { color: var(--hpe-green); font-weight: 700; margin: 0 0 14px; font-size: 1.05rem; }
+        .form-label { color: #CBD5E1; font-size: 0.85rem; font-weight: 700; }
+        .form-control, .form-select { background-color: #111827; border: 1px solid var(--border); color: white; }
+        .form-control::placeholder { color: #9CA3AF; opacity: 1; }
+        .form-control:focus, .form-select:focus { background-color: #111827; color: white;
+            border-color: var(--hpe-green); box-shadow: 0 0 0 .25rem rgba(1,169,130,.25); }
+        .form-control[readonly] { color: #CBD5E1; }
+        .muted { color: #9CA3AF; font-size: 0.82rem; }
+        .btn-outline-success { border-color: #01A982; color: #01A982; }
+        .btn-outline-success:hover { background-color: #01A982; color: #001B14; }
+
+        /* Guidance boxes, matching Initial Setup */
+        .setup-section { padding: 22px; margin-bottom: 20px; background: #1B2432;
+            border: 1px solid var(--border); border-radius: 10px; }
+        .setup-note { margin-bottom: 20px; padding: 14px 16px; background: #0F172A;
+            border-left: 4px solid #38BDF8; border-radius: 6px; color: #CBD5E1;
+            font-size: 0.88rem; line-height: 1.5; }
+        .setup-note.note-green { border-left-color: #22C55E; }
+        .setup-note strong { display: block; margin-bottom: 6px; color: #FFFFFF; }
+        .setup-note p { margin: 0 0 8px; }
+        .setup-note p:last-child { margin-bottom: 0; }
+        .setup-note ul { margin: 0; padding-left: 22px; }
+        .setup-note code { color: #8FEFCF; }
+        .navigation-path { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 10px 0; }
+        .navigation-item { color: #FFFFFF; font-size: 0.88rem; font-weight: 600; }
+        .navigation-separator { color: #38BDF8; font-size: 1rem; font-weight: 700; }
+        .field-hint { margin-top: 6px; color: #94A3B8; font-size: 0.82rem; line-height: 1.5; }
+
+        /* Save-anyway box, shown inside the error message */
+        .confirm-box { margin-top: 14px; padding: 12px 14px; background: #422006;
+            border: 1px solid #A16207; border-radius: 8px; color: #FEF3C7; }
+        .confirm-box .form-check-input { border-color: #FDE68A; }
+        .confirm-box .form-check-label { font-weight: 700; }
+
+        /* Provisioning option and results */
+        .provisioning-option { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border); }
+        .provisioning-settings { display: none; margin-top: 20px; padding: 20px;
+            background: #0F172A; border: 1px solid var(--border); border-radius: 8px; }
+        .provisioning-settings h3 { margin: 0 0 16px; color: #FFFFFF; font-size: 1.05rem; }
+        .provisioning-workflow-note { margin-bottom: 18px; padding: 12px 14px; background: #111827;
+            border: 1px solid var(--border); border-left: 4px solid #38BDF8; border-radius: 7px;
+            color: #CBD5E1; font-size: 0.85rem; line-height: 1.5; }
+        .provisioning-workflow-note strong { color: #FFFFFF; }
+        .validation-box, .provisioning-plan, .provisioning-result { margin-bottom: 20px; padding: 18px;
+            background: #0F172A; border: 1px solid var(--border); border-radius: 8px; }
+        .provisioning-plan, .provisioning-result { background: #1B2432; }
+        .validation-title, .provisioning-plan h2, .provisioning-result h2 { margin: 0 0 14px;
+            color: #FFFFFF; font-size: 1.1rem; font-weight: 600; }
+        .validation-item { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px;
+            color: #CBD5E1; line-height: 1.5; }
+        .validation-item:first-of-type { margin-top: 0; }
+        .validation-icon { width: 20px; flex-shrink: 0; font-weight: 700; font-size: 1rem; }
+        .validation-success { color: #22C55E; }
+        .validation-failed { color: #EF4444; }
+        .validation-warning { color: #F59E0B; }
+        .validation-skipped { color: #94A3B8; }
+        .provisioning-items-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .provisioning-plan-item { display: flex; align-items: flex-start; gap: 12px; min-width: 0;
+            padding: 14px; background: #0F172A; border: 1px solid var(--border); border-radius: 8px; }
+        .provisioning-item-content { min-width: 0; }
+        .provisioning-plan-item strong { display: block; margin-bottom: 4px; color: #FFFFFF; overflow-wrap: anywhere; }
+        .provisioning-item-message { color: #94A3B8; font-size: 0.85rem; line-height: 1.45; }
+        .provisioning-status { display: flex; align-items: center; justify-content: center;
+            width: 22px; height: 22px; flex-shrink: 0; font-size: 1rem; font-weight: 700; }
+        .provisioning-existing .provisioning-status,
+        .provisioning-created .provisioning-status { color: #22C55E; }
+        .provisioning-would_create .provisioning-status { color: #38BDF8; }
+        .provisioning-conflict .provisioning-status,
+        .provisioning-failed .provisioning-status { color: #EF4444; }
+        .provisioning-next-step { display: flex; align-items: flex-start; gap: 12px; margin-top: 16px;
+            padding: 14px 16px; background: #0F172A; border: 1px solid #475569;
+            border-left: 4px solid var(--hpe-green); border-radius: 7px; color: #CBD5E1;
+            font-size: 0.85rem; line-height: 1.5; }
+        .provisioning-next-step strong { color: #FFFFFF; }
+        .provisioning-next-step-icon { color: var(--hpe-green); font-size: 1.1rem; font-weight: 700; }
+        .would-create-symbol { color: #38BDF8; font-weight: 700; }
+        #ajax-errors, #ajax-validation, #ajax-provisioning-preview { scroll-margin-top: 24px; }
+        #save-button:disabled { background: #475569; border-color: #475569; color: #CBD5E1; cursor: not-allowed; }
+        @media (max-width: 700px) { .provisioning-items-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-dark py-3">
+    <div class="container-fluid px-4">
+        <span class="navbar-brand fs-4 mb-0">
+            <span class="brand-green">ClearPass</span> Policy Visualizer
+        </span>
+        <a href="{{ url_for('env_admin.index') }}" class="btn btn-outline-success">Back to environments</a>
+    </div>
+</nav>
+<div class="container px-4 mt-4" style="max-width: 900px;">
+    <div class="main-card mb-4">
+        <div class="card-header-custom">
+            <h5 class="mb-0">{{ 'Add environment' if mode == 'new' else 'Edit environment' }}</h5>
+        </div>
+        <div class="p-4">
+
+            <div id="ajax-errors"></div>
+            <div id="ajax-validation"></div>
+            <div id="ajax-provisioning-preview"></div>
+
+            {# Hide an error when the checklist below already shows the same text. #}
+            {% set validation_messages = (validation.values() | map(attribute="message") | list) if validation else [] %}
+            {% set visible_errors = errors | reject("in", validation_messages) | list %}
+            {% if visible_errors %}
+                <div class="alert alert-danger">
+                    <ul class="mb-0">
+                        {% for error in visible_errors %}<li>{{ error }}</li>{% endfor %}
+                    </ul>
+                    {% if form.get('radius_blocked') %}
+                        {# The checkbox sits here, with the message, but belongs to the form below. #}
+                        <div class="confirm-box">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="confirm_radius"
+                                       name="confirm_radius" form="env-form">
+                                <label class="form-check-label" for="confirm_radius">
+                                    Save these RADIUS settings anyway
+                                </label>
+                            </div>
+                            <div class="mt-1" style="font-size:0.85rem;">
+                                Tick this, retype the three secrets below (they are cleared after every
+                                attempt), then press <strong>Save</strong> again.
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            {% if validation %}
+                <div class="validation-box">
+                    <h2 class="validation-title">Configuration Validation</h2>
+                    {% for name, item in validation.items() %}
+                        <div class="validation-item">
+                            {% if item.get("skipped") %}
+                                <span class="validation-icon validation-skipped">-</span>
+                            {% elif item.get("success") %}
+                                <span class="validation-icon validation-success">&#10003;</span>
+                            {% elif item.get("warning") %}
+                                <span class="validation-icon validation-warning">!</span>
+                            {% else %}
+                                <span class="validation-icon validation-failed">&#10007;</span>
+                            {% endif %}
+                            <span>{{ item.get("message") }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% if provisioning_plan %}
+                <div class="provisioning-plan">
+                    <h2>ClearPass Provisioning Preview</h2>
+                    <div class="provisioning-items-grid">
+                        {% for item in provisioning_plan["items"] %}
+                            <div class="provisioning-plan-item provisioning-{{ item.status }}">
+                                <span class="provisioning-status">
+                                    {% if item.status == "existing" %}&#10003;{% elif item.status == "would_create" %}+{% else %}!{% endif %}
+                                </span>
+                                <div class="provisioning-item-content">
+                                    <strong>{{ item.name }}</strong>
+                                    <div class="provisioning-item-message">{{ item.message }}</div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if provisioning_result %}
+                <div class="provisioning-result">
+                    <h2>ClearPass Provisioning Result</h2>
+                    <div class="provisioning-items-grid">
+                        {% for item in provisioning_result["items"] %}
+                            <div class="provisioning-plan-item provisioning-{{ item.status }}">
+                                <span class="provisioning-status">
+                                    {% if item.status in ["existing", "created"] %}&#10003;{% else %}!{% endif %}
+                                </span>
+                                <div class="provisioning-item-content">
+                                    <strong>{{ item.name }}</strong>
+                                    <div class="provisioning-item-message">{{ item.message }}</div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <form id="env-form" method="post" autocomplete="off"
+                  data-preview-url="{{ url_for('env_admin.provisioning_preview') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-8">
+                        <label class="form-label" for="name">Environment name</label>
+                        <input class="form-control" id="name" name="name" maxlength="40"
+                               value="{{ form.get('name', '') }}" required autofocus
+                               placeholder="For example Test, Dev or Production">
+                        <div class="field-hint">You choose the name. It appears in the Environment menu and on the sign-in page.</div>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="production" name="production"
+                                   {% if form.get('production') %}checked{% endif %}>
+                            <label class="form-check-label" for="production">Production</label>
+                            <div class="field-hint">Shows a red PRODUCTION badge.</div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if is_default %}
+                    <div class="setup-note note-green">
+                        <strong>This is the initial environment</strong>
+                        <p>
+                            Changes to its connection settings apply straight away. The
+                            environment reloads, and a copy of the previous settings is kept
+                            as <code>.visualiser.env.prev</code>.
+                        </p>
+                    </div>
+                {% endif %}
+
+                {% if mode == 'edit' %}
+                    <p class="muted mb-3">Leave a secret blank to keep the saved value.</p>
+                {% endif %}
+
+                <!-- RADIUS Authentication -->
+                <section class="setup-section">
+                    <div class="section-title">RADIUS Authentication</div>
+                    <div class="setup-note note-green">
+                        <strong>ClearPass user authentication prerequisite</strong>
+                        <p>
+                            Users sign in to this environment with an account in this ClearPass.
+                            The Visualiser's ClearPass service and enforcement policy must return the
+                            <code>Aruba-User-Role</code> attribute with one of the roles the Visualiser recognises:
+                        </p>
+                        <ul>
+                            <li><code>Admin</code> - Administrator access</li>
+                            <li><code>ReadOnly</code> - Read-only access</li>
+                        </ul>
+                        {% if mode == 'new' %}
+                            <p class="mt-2">
+                                If they do not exist yet, tick <strong>Automatically configure ClearPass</strong>
+                                below and the Visualiser will create them.
+                            </p>
+                        {% endif %}
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label" for="radius_server">RADIUS Server</label>
+                            <input class="form-control" id="radius_server" name="radius_server"
+                                   value="{{ form.get('radius_server', '') }}" required
+                                   placeholder="clearpass.example.com">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="radius_secret">RADIUS Shared Secret</label>
+                            <input class="form-control" type="password" id="radius_secret" name="radius_secret"
+                                   autocomplete="new-password" {% if mode == 'new' %}required{% endif %}>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="radius_secret_confirm">Confirm RADIUS Shared Secret</label>
+                            <input class="form-control" type="password" id="radius_secret_confirm" name="radius_secret_confirm"
+                                   autocomplete="new-password" {% if mode == 'new' %}required{% endif %}>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="radius_port">Authentication Port</label>
+                            <input class="form-control" id="radius_port" name="radius_port"
+                                   value="{{ form.get('radius_port', '1812') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="nas_identifier">NAS Identifier</label>
+                            <input class="form-control" id="nas_identifier" name="nas_identifier"
+                                   value="{{ form.get('nas_identifier', 'clearpass-policy-visualiser') }}" required>
+                            <div class="field-hint">
+                                Mandatory for assisted provisioning. The provisioned ClearPass Service
+                                must use the exact NAS Identifier sent by the Visualiser.
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if mode == 'new' %}
+                    <div class="provisioning-option">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="assisted_provisioning"
+                                   name="assisted_provisioning"
+                                   {% if form.get('assisted_provisioning') %}checked{% endif %}>
+                            <label class="form-check-label" for="assisted_provisioning">
+                                <strong>Automatically configure ClearPass for Policy Visualiser</strong>
+                            </label>
+                        </div>
+                        <div class="field-hint">
+                            Creates or validates the required roles, local users, Enforcement Profiles,
+                            Enforcement Policy and enabled RADIUS Service in <strong>this new ClearPass</strong>.
+                            Existing matching objects are not modified.
+                        </div>
+
+                        <div id="provisioning-settings" class="provisioning-settings">
+                            <h3>Visualiser ClearPass Users</h3>
+                            <div class="provisioning-workflow-note">
+                                <strong>Before continuing</strong>
+                                <p class="mb-0 mt-1">
+                                    Enter the usernames and passwords, then select
+                                    <strong>Review ClearPass Changes</strong>. After the review completes
+                                    successfully, select <strong>Test connection and add</strong>.
+                                </p>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="provision_admin_user_id">Administrator Username</label>
+                                    <input class="form-control" id="provision_admin_user_id" name="provision_admin_user_id"
+                                           value="{{ form.get('provision_admin_user_id', 'vis-admin') }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="provision_helpdesk_user_id">Helpdesk Username</label>
+                                    <input class="form-control" id="provision_helpdesk_user_id" name="provision_helpdesk_user_id"
+                                           value="{{ form.get('provision_helpdesk_user_id', 'vis-helpdesk') }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="provision_admin_password">Administrator Password</label>
+                                    <input class="form-control" type="password" id="provision_admin_password"
+                                           name="provision_admin_password" autocomplete="new-password">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="provision_admin_password_confirm">Confirm Administrator Password</label>
+                                    <input class="form-control" type="password" id="provision_admin_password_confirm"
+                                           name="provision_admin_password_confirm" autocomplete="new-password">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="provision_helpdesk_password">Helpdesk Password</label>
+                                    <input class="form-control" type="password" id="provision_helpdesk_password"
+                                           name="provision_helpdesk_password" autocomplete="new-password">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="provision_helpdesk_password_confirm">Confirm Helpdesk Password</label>
+                                    <input class="form-control" type="password" id="provision_helpdesk_password_confirm"
+                                           name="provision_helpdesk_password_confirm" autocomplete="new-password">
+                                </div>
+                            </div>
+                            <div class="field-hint">
+                                Passwords are required only when the corresponding ClearPass local user does not
+                                already exist. Passwords are not saved in the Visualiser configuration.
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </section>
+
+                <!-- ClearPass REST API -->
+                <section class="setup-section">
+                    <div class="section-title">ClearPass REST API</div>
+                    <div class="setup-note">
+                        <strong>ClearPass API client</strong>
+                        <p>You can find or create the API client in ClearPass under:</p>
+                        <div class="navigation-path">
+                            <span class="navigation-item">Home</span><span class="navigation-separator">&rsaquo;</span>
+                            <span class="navigation-item">Administration</span><span class="navigation-separator">&rsaquo;</span>
+                            <span class="navigation-item">API Services</span><span class="navigation-separator">&rsaquo;</span>
+                            <span class="navigation-item">API Clients</span>
+                        </div>
+                        <p>Enter the Client ID and Client Secret from the ClearPass API client below.</p>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label" for="api_url">ClearPass API URL</label>
+                            <input class="form-control" id="api_url" name="api_url" value="{{ form.get('api_url', '') }}"
+                                   placeholder="https://clearpass.example.com/api" required>
+                            <div class="field-hint">
+                                Defaults to the RADIUS server using HTTPS and the <code>/api</code> path.
+                                This can be changed if the API uses a different address.
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="client_id">Client ID</label>
+                            <input class="form-control" id="client_id" name="client_id" value="{{ form.get('client_id', '') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="client_secret">Client Secret</label>
+                            <input class="form-control" type="password" id="client_secret" name="client_secret"
+                                   autocomplete="new-password" {% if mode == 'new' %}required{% endif %}>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="client_secret_confirm">Confirm Client Secret</label>
+                            <input class="form-control" type="password" id="client_secret_confirm" name="client_secret_confirm"
+                                   autocomplete="new-password" {% if mode == 'new' %}required{% endif %}>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="verify_ssl">Verify SSL Certificate</label>
+                            <select class="form-select" id="verify_ssl" name="verify_ssl">
+                                <option value="false" {% if form.get('verify_ssl') != 'true' %}selected{% endif %}>No</option>
+                                <option value="true" {% if form.get('verify_ssl') == 'true' %}selected{% endif %}>Yes</option>
+                            </select>
+                            <div class="field-hint">
+                                SSL certificate verification is disabled by default. Enable verification when
+                                ClearPass uses a trusted certificate.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PostgreSQL -->
+                <section class="setup-section">
+                    <div class="section-title">PostgreSQL Endpoint Profiling and Hit Counts</div>
+                    <div class="setup-note">
+                        <strong>ClearPass PostgreSQL credentials</strong>
+                        <p>
+                            PostgreSQL access is required for endpoint profiling, and for the current-hour
+                            Service Hit Counts read from ClearPass Insight.
+                        </p>
+                        <p>The <code>appexternal</code> account password is configured in ClearPass under:</p>
+                        <div class="navigation-path">
+                            <span class="navigation-item">Administration</span><span class="navigation-separator">&rsaquo;</span>
+                            <span class="navigation-item">Server Manager</span><span class="navigation-separator">&rsaquo;</span>
+                            <span class="navigation-item">Server Configuration</span><span class="navigation-separator">&rsaquo;</span>
+                            <span class="navigation-item">Cluster-Wide Parameters</span><span class="navigation-separator">&rsaquo;</span>
+                            <span class="navigation-item">Database</span>
+                        </div>
+                        <p>Use the External PostgreSQL Password configured on the Database tab.</p>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label" for="sql_host">PostgreSQL Host</label>
+                            <input class="form-control" id="sql_host" name="sql_host" value="{{ form.get('sql_host', '') }}" required>
+                            <div class="field-hint">
+                                Defaults to the RADIUS server. This can be changed if PostgreSQL uses a different host.
+                                Service Hit Counts use the same host and account on port 5433, database <code>insightdb</code>.
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="sql_port">Port</label>
+                            <input class="form-control" id="sql_port" name="sql_port" value="{{ form.get('sql_port', '5432') }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="sql_database">Database</label>
+                            <input class="form-control" id="sql_database" name="sql_database"
+                                   value="{{ form.get('sql_database', 'tipsdb') }}" required
+                                   {% if mode == 'new' %}readonly{% endif %}>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="sql_username">Username</label>
+                            <input class="form-control" id="sql_username" name="sql_username"
+                                   value="{{ form.get('sql_username', 'appexternal') }}" required
+                                   {% if mode == 'new' %}readonly{% endif %}>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="sql_password">Password</label>
+                            <input class="form-control" type="password" id="sql_password" name="sql_password"
+                                   autocomplete="new-password" {% if mode == 'new' %}required{% endif %}>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="sql_password_confirm">Confirm Password</label>
+                            <input class="form-control" type="password" id="sql_password_confirm" name="sql_password_confirm"
+                                   autocomplete="new-password" {% if mode == 'new' %}required{% endif %}>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="mt-4 d-flex justify-content-end gap-2">
+                    <a href="{{ url_for('env_admin.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    {% if mode == 'new' %}
+                    <button id="preview-button" type="button" class="btn btn-outline-warning" style="display:none;">
+                        Review ClearPass Changes
+                    </button>
+                    {% endif %}
+                    <button id="save-button" type="submit" class="btn btn-success">
+                        {{ 'Test connection and add' if mode == 'new' else 'Save' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const form = document.getElementById("env-form");
+    const radiusServer = document.getElementById("radius_server");
+    const apiUrl = document.getElementById("api_url");
+    const sqlHost = document.getElementById("sql_host");
+    const ajaxErrors = document.getElementById("ajax-errors");
+    const ajaxValidation = document.getElementById("ajax-validation");
+    const ajaxPlan = document.getElementById("ajax-provisioning-preview");
+    const saveButton = document.getElementById("save-button");
+    const previewButton = document.getElementById("preview-button");
+    const assisted = document.getElementById("assisted_provisioning");
+    const settingsBox = document.getElementById("provisioning-settings");
+
+    let reviewComplete = false;
+
+    // Hosts follow the RADIUS server until the user types in them.
+    let apiUrlEdited = apiUrl && apiUrl.value.trim() !== "";
+    let sqlHostEdited = sqlHost && sqlHost.value.trim() !== "";
+
+    function cleanHost(host) {
+        return host.trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+    }
+
+    function updateDerivedHosts() {
+        if (!radiusServer) { return; }
+        const host = cleanHost(radiusServer.value);
+        if (apiUrl && !apiUrlEdited) {
+            apiUrl.value = host ? "https://" + host + "/api" : "";
+        }
+        if (sqlHost && !sqlHostEdited) {
+            sqlHost.value = host;
+        }
+    }
+
+    if (apiUrl) { apiUrl.addEventListener("input", function () { apiUrlEdited = true; }); }
+    if (sqlHost) { sqlHost.addEventListener("input", function () { sqlHostEdited = true; }); }
+    if (radiusServer) { radiusServer.addEventListener("input", updateDerivedHosts); }
+
+    // Everything below applies only to the Add page.
+    if (!assisted || !previewButton) {
+        updateDerivedHosts();
+        return;
+    }
+
+    const reviewFields = [
+        "radius_server", "radius_port", "radius_secret", "radius_secret_confirm",
+        "nas_identifier", "api_url", "client_id", "client_secret",
+        "client_secret_confirm", "verify_ssl", "sql_host", "sql_port",
+        "sql_password", "sql_password_confirm",
+        "provision_admin_user_id", "provision_admin_password",
+        "provision_admin_password_confirm", "provision_helpdesk_user_id",
+        "provision_helpdesk_password", "provision_helpdesk_password_confirm"
+    ];
+
+    function escapeHtml(value) {
+        const element = document.createElement("div");
+        element.textContent = value == null ? "" : value;
+        return element.innerHTML;
+    }
+
+    function updateSaveButton() {
+        if (!assisted.checked) {
+            saveButton.disabled = false;
+            saveButton.title = "";
+            return;
+        }
+        saveButton.disabled = !reviewComplete;
+        saveButton.title = reviewComplete ? "" : "Review ClearPass changes before continuing.";
+    }
+
+    function clearResults() {
+        ajaxErrors.innerHTML = "";
+        ajaxValidation.innerHTML = "";
+        ajaxPlan.innerHTML = "";
+    }
+
+    function updateVisibility() {
+        if (assisted.checked) {
+            settingsBox.style.display = "block";
+            previewButton.style.display = "inline-block";
+        } else {
+            settingsBox.style.display = "none";
+            previewButton.style.display = "none";
+            reviewComplete = false;
+            clearResults();
+        }
+        updateSaveButton();
+    }
+
+    function invalidateReview() {
+        if (!assisted.checked) { return; }
+        reviewComplete = false;
+        updateSaveButton();
+        ajaxPlan.innerHTML = "";
+    }
+
+    // An error that the checklist already shows is not listed a second time.
+    function dedupeErrors(errors, validation) {
+        const seen = new Set(Object.values(validation || {}).map(function (r) { return r.message; }));
+        return (errors || []).filter(function (e) { return !seen.has(e); });
+    }
+
+    function renderErrors(errors) {
+        if (!errors || errors.length === 0) { ajaxErrors.innerHTML = ""; return; }
+        const messages = errors.map(function (e) { return "<div>" + escapeHtml(e) + "</div>"; }).join("");
+        ajaxErrors.innerHTML = '<div class="alert alert-danger">' + messages + "</div>";
+    }
+
+    function renderValidation(validation) {
+        if (!validation) { ajaxValidation.innerHTML = ""; return; }
+        const rows = Object.values(validation).map(function (result) {
+            let icon = "\u2717";
+            let cls = "validation-failed";
+            if (result.skipped) { icon = "-"; cls = "validation-skipped"; }
+            else if (result.success) { icon = "\u2713"; cls = "validation-success"; }
+            else if (result.warning) { icon = "!"; cls = "validation-warning"; }
+            return '<div class="validation-item"><span class="validation-icon ' + cls + '">' +
+                icon + "</span><span>" + escapeHtml(result.message) + "</span></div>";
+        }).join("");
+        ajaxValidation.innerHTML = '<div class="validation-box"><h2 class="validation-title">' +
+            "Configuration Validation</h2>" + rows + "</div>";
+    }
+
+    function renderPlan(plan) {
+        if (!plan || !plan.items) { ajaxPlan.innerHTML = ""; return; }
+        const items = plan.items.map(function (item) {
+            let icon = "!";
+            if (item.status === "existing") { icon = "\u2713"; }
+            else if (item.status === "would_create") { icon = "+"; }
+            return '<div class="provisioning-plan-item provisioning-' + escapeHtml(item.status) + '">' +
+                '<span class="provisioning-status">' + icon + "</span>" +
+                '<div class="provisioning-item-content"><strong>' + escapeHtml(item.name) + "</strong>" +
+                '<div class="provisioning-item-message">' + escapeHtml(item.message) + "</div></div></div>";
+        }).join("");
+        ajaxPlan.innerHTML = '<div class="provisioning-plan"><h2>ClearPass Provisioning Preview</h2>' +
+            '<div class="provisioning-items-grid">' + items + "</div>" +
+            '<div class="provisioning-next-step"><span class="provisioning-next-step-icon">\u2193</span>' +
+            "<div><strong>Review complete</strong><div>Objects marked with a " +
+            '<span class="would-create-symbol">+</span> will be created. Complete any required user ' +
+            "passwords, then select <strong>Test connection and add</strong>.</div></div></div></div>";
+    }
+
+    function scrollTo(element) {
+        if (element) { element.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    }
+
+    async function previewProvisioning() {
+        clearResults();
+        previewButton.disabled = true;
+        previewButton.textContent = "Checking ClearPass...";
+        try {
+            const response = await fetch(form.dataset.previewUrl, {
+                method: "POST",
+                body: new FormData(form),
+                headers: { "Accept": "application/json" }
+            });
+            const data = await response.json();
+            const visibleErrors = dedupeErrors(data.errors, data.validation);
+            renderValidation(data.validation);
+            renderPlan(data.provisioning_plan);
+            renderErrors(visibleErrors);
+            reviewComplete = response.ok && data.success === true;
+            updateSaveButton();
+            if (!response.ok && (!data.errors || data.errors.length === 0)) {
+                renderErrors(["ClearPass provisioning preview failed."]);
+            }
+            if (visibleErrors.length > 0) { scrollTo(ajaxErrors); }
+            else if (data.provisioning_plan) { scrollTo(ajaxPlan); }
+            else if (data.validation) { scrollTo(ajaxValidation); }
+        } catch (error) {
+            renderErrors([error.message || "ClearPass provisioning preview failed."]);
+            scrollTo(ajaxErrors);
+        } finally {
+            previewButton.disabled = false;
+            previewButton.textContent = "Review ClearPass Changes";
+        }
+    }
+
+    previewButton.addEventListener("click", previewProvisioning);
+    assisted.addEventListener("change", updateVisibility);
+    reviewFields.forEach(function (id) {
+        const field = document.getElementById(id);
+        if (!field) { return; }
+        field.addEventListener("input", invalidateReview);
+        field.addEventListener("change", invalidateReview);
+    });
+
+    updateDerivedHosts();
+    updateVisibility();
+})();
+</script>
+</body>
+</html>

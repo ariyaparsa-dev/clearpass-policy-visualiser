@@ -7,70 +7,22 @@ Visualise, analyse and troubleshoot Aruba ClearPass Services, Role Mapping Polic
   <a href="https://flask.palletsprojects.com/"><img src="https://img.shields.io/badge/Flask-Web_App-green" alt="Flask"></a>
   <a href="https://www.hpe.com/us/en/products/networking/clearpass-policy-manager.html"><img src="https://img.shields.io/badge/Aruba-ClearPass-orange" alt="ClearPass"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-yellow" alt="License"></a>
-</p>
 
 ---
 
 ## Overview
 
-ClearPass Policy Visualiser is a Flask-based visualisation and analysis platform for Aruba ClearPass Policy Manager.
+ClearPass Policy Visualiser (CPV) is a Flask application that shows the complete ClearPass authentication and authorisation flow (Services, authentication and authorisation sources, Role Mapping Policies, Roles, Enforcement Policies, Enforcement Profiles and Endpoint Repository conditions) as interactive graphs and read-only reports.
 
-It provides graphical visibility into the complete authentication and authorisation workflow, including:
+It helps administrators understand, review and clean up ClearPass configuration without navigating multiple areas of Policy Manager, and to check what a change will affect before making it.
 
-- Services
-- Authentication Sources
-- Authorisation Sources
-- Role Mapping Policies
-- Role Mapping Rules
-- Enforcement Policies
-- Enforcement Profiles
-- Enforcement Attributes
-- Roles
-- Endpoint Repository conditions
-
-The Visualiser consolidates policy relationships, dependencies and enforcement actions into an interactive interface, allowing administrators to understand ClearPass configuration without navigating multiple areas of Policy Manager.
-
-Additional capabilities include:
-
-- Dependency analysis across ClearPass policy objects
-- Unused object detection
-- Enforcement Profile inspection
-- Role Mapping and Enforcement Policy graph visualisation
-- Endpoint Repository analysis
-- Endpoint profiling visibility
-- RADIUS-based user authentication
-- Role-based application access
-- Browser-based Initial Setup
-- Configuration and connectivity validation
-- Optional API-assisted ClearPass configuration
-- Read-only ClearPass change review before provisioning
-- Idempotent creation and validation of required ClearPass objects
-- PostgreSQL endpoint profiling
-- Current-hour ClearPass Service Hit Counts using ClearPass Insight
-- Sortable Service inventory by Order, Name, Type and Hit Count
-- Read-only Impact Analysis for Enforcement Profiles
-- Read-only Impact Analysis for Enforcement Policies
-- Read-only Impact Analysis for Role Mapping Policies
-- Read-only Impact Analysis for Roles
-- Dashboard Impact Analysis Lookup across used, unused and built-in policy objects
-
-The application uses ClearPass REST APIs secured with OAuth 2.0 Client Credentials Grant for policy retrieval, analysis and optional configuration.
-
-Users authenticate against ClearPass using RADIUS, with application permissions derived from returned role attributes such as `Aruba-User-Role`.
-
-Endpoint profiling data is loaded directly from the ClearPass PostgreSQL database using the built-in `appexternal` account and the `tips_endpoint_profiles` table. Current-hour Service Hit Counts are calculated from ClearPass Insight authentication records and refreshed with the Service cache.
-
-In the reference environment, PostgreSQL reduced endpoint fingerprint cache loading from approximately 74 seconds using the REST API to approximately 0.08 seconds.
+**New in v1.7.0:** one CPV instance can manage up to three ClearPass environments, such as Production, Test and Dev, each with its own connection settings and sign-in.
 
 <p align="center">
   <img src="screenshots/screenshot-8.jpg" alt="Service Dependency" width="800">
 </p>
 
----
-
-## Configuration and Operation Guide
-
-For detailed guidance, see the [ClearPass Policy Visualiser technote](https://solutiontechlab.com/2026/08/22/clearpass-policy-visualiser/), which covers ClearPass API access and step-by-step installation, configuration and usage of ClearPass Policy Visualiser.
+For step-by-step installation, ClearPass API access and usage, see the [ClearPass Policy Visualiser technote](https://solutiontechlab.com/2026/08/22/clearpass-policy-visualiser/).
 
 ---
 
@@ -163,1368 +115,307 @@ Setup Complete reports which ClearPass objects were created and which existing o
   <img src="screenshots/screenshot-10.jpg" alt="Unused Objects" width="800">
 </p>
 
+### Environments Page
+
+<p align="center">
+  <img src="screenshots/screenshot-11.jpg" alt="Unused Objects" width="800">
+</p>
+
+<p align="center">
+  <img src="screenshots/screenshot-12.jpg" alt="Unused Objects" width="800">
+</p>
+
 ---
 
 ## Features
 
-### First-Run Initial Setup
+### Multiple ClearPass Environments
 
-ClearPass Policy Visualiser includes a browser-based Initial Setup workflow for configuring, validating and optionally provisioning the ClearPass integration.
+- Up to three environments, named freely, for example `Prod_Cluster`, `Test` or `Dev`.
+- Each environment has its own REST API client, RADIUS server and PostgreSQL connection, and its own cached data.
+- Users sign in to each environment separately through that environment's RADIUS server, so a user can be Admin in one and ReadOnly in another.
+- Switch environments from the navbar. Environments other than the initial one load in the background the first time they are opened, with a loading panel and a **Try again** option if loading fails.
+- The active environment is shown on every page and report, in the application log as a `[Name]` tag, in exported PDF headers and in exported file names. An optional red **PRODUCTION** badge marks live environments.
 
-When the application is started without an existing Visualiser configuration, Flask starts without initialising the ClearPass caches and redirects the administrator to Initial Setup.
+### Environments Page (Administrators)
 
-The setup workflow configures:
+Open **Manage environments** from the dashboard to:
 
-- ClearPass REST API
-- ClearPass REST API SSL certificate verification
-- RADIUS authentication
-- RADIUS shared secret
-- NAS Identifier
-- ClearPass PostgreSQL endpoint profiling
-- Optional API-assisted ClearPass configuration
+- **Add** an environment. The form follows the Initial Setup flow, with guidance, connection testing before saving and optional assisted provisioning of the required ClearPass objects.
+- **Edit** an environment, including the initial one created by Initial Setup. Changing connection settings retests them, saves them and reloads the environment. For the initial environment, the previous settings are kept as `.visualiser.env.prev`, and a RADIUS change that fails its test must be confirmed before it is saved.
+- **Rename** an environment or set its production flag without reloading it.
+- **Remove** an environment other than the initial one.
 
-Sensitive fields require confirmation before validation. Configuration is validated before being persisted.
+Status updates on the page while an environment is loading.
 
-### Setup Connectivity Validation
+### Initial Setup
 
-Initial Setup performs connectivity validation before configuration is saved.
+On first start, CPV opens a browser-based Initial Setup that configures and validates:
 
-Validation includes:
+- ClearPass REST API (OAuth 2.0 client credentials) and SSL verification
+- RADIUS server, shared secret and NAS Identifier
+- PostgreSQL access using the built-in `appexternal` account
 
-- ClearPass server connectivity
-- ClearPass REST API authentication
-- PostgreSQL endpoint profiling connectivity
+Configuration is saved only when validation passes.
 
-If the ClearPass server cannot be reached, the REST API authentication test is skipped rather than incorrectly reported as an authentication failure.
+**Assisted provisioning (optional)** creates or validates the objects CPV needs in ClearPass: the `Visualiser-Admin` and `Visualiser-Helpdesk` roles, two Local Users, Admin and ReadOnly Enforcement Profiles, the `Visualiser Access Policy` and the enabled `Policy Visualiser` RADIUS Service (802.1X Wired template, PAP, Local User Repository, matched on the Visualiser usernames and NAS Identifier).
 
-Validation results are displayed individually so administrators can distinguish between successful, failed and skipped tests. Failed setup attempts remain on the Initial Setup page and do not create a completed Visualiser configuration.
+A read-only **Review ClearPass Changes** step reports each object as `existing`, `would_create` or `conflict` before anything is changed. Provisioning is idempotent: matching objects and existing passwords are left unchanged, conflicts are never overwritten, nothing is deleted, and created objects are verified. Local User passwords are never saved.
 
-### API-Assisted ClearPass Configuration
+### Connection Diagnostics
 
-ClearPass Policy Visualiser v1.3.0 adds an optional API-assisted configuration workflow to Initial Setup.
+When a connection check fails, CPV explains why in plain language, for example:
 
-When **Automatically configure ClearPass for Policy Visualiser** is enabled, the Visualiser can create or validate the complete ClearPass authentication dependency chain:
+- the name does not resolve, nothing answers, or there is no route
+- the host is up but the port is blocked or refused
+- the URL path is wrong (`/api` expected), `http://` or port 80 was used, or the certificate is not trusted
+- PostgreSQL rejected the password, or the source address is not allowed
 
-1. `Visualiser-Admin` role
-2. `Visualiser-Helpdesk` role
-3. `visadmin` Local User
-4. `vis-helpdesk` Local User
-5. `Visualiser Admin access` Enforcement Profile
-6. `Visualiser Helpdesk access` Enforcement Profile
-7. `Visualiser Access Policy`
-8. `Policy Visualiser` RADIUS Service
+Amber notes flag a PostgreSQL or RADIUS host that differs from the API host, and hosts copied from another environment by mistake.
 
-The provisioned Enforcement Profiles return:
+**RADIUS check.** CPV sends one PAP test request for the user `cpv-connectivity-test` with a random password. A signed reply proves the server is reachable, accepts this host and shares the secret. The request appears in ClearPass Access Tracker as a rejected authentication, usually with "Service Categorization failed". This is expected.
 
-```text
-Aruba-User-Role = Admin
-Aruba-User-Role = ReadOnly
-```
+### Dashboard and Service Hit Counts
 
-The provisioned Enforcement Policy maps:
+- ClearPass health, response time and version for the active environment.
+- Service inventory sortable by Order, Name, Type and Hit Count.
+- Current-hour Service Hit Counts from ClearPass Insight, with Top and Least Hits. Counts reset at the start of each clock hour and are recalculated on **Refresh Services**. If Insight cannot be reached, counts show `n/a` and the rest of CPV loads normally.
+- **Impact Analysis Lookup** across Enforcement Profiles, Enforcement Policies, Role Mapping Policies and Roles, including unused and built-in objects, with type filters and keyboard navigation.
 
-```text
-Visualiser-Admin
-        ↓
-Visualiser Admin access
-        ↓
-Aruba-User-Role = Admin
-```
+### Visualisation
 
-and:
+Interactive graphs of Services and standalone policies, with zoom, pan, expandable branches, node search, Impact Analysis links on policy, profile and Role nodes, and PNG, JPG and SVG export.
 
-```text
-Visualiser-Helpdesk
-        ↓
-Visualiser Helpdesk access
-        ↓
-Aruba-User-Role = ReadOnly
-```
+### Impact Analysis
 
-The provisioned RADIUS Service uses:
+Read-only reports, opened in a new tab so the graph state is kept, for:
 
-- `802.1X Wired` service template
-- PAP authentication
-- `[Local User Repository]`
-- `MATCHES_ALL` service rules
-- The configured Visualiser usernames
-- The NAS Identifier entered during Initial Setup
-- `Visualiser Access Policy`
-- Enabled service state
+- **Enforcement Profiles:** referencing policies and affected Services, including policies not assigned to any Service.
+- **Enforcement Policies:** rules and conditions, dependent profiles, default outcome and affected Services.
+- **Role Mapping Policies:** rules and conditions, mapped Roles, default outcome and affected Services.
+- **Roles:** references in Role Mapping Policies, `Tips:Role` conditions, Enforcement Policies and Guest Operator Profiles.
 
-The NAS Identifier is mandatory for assisted configuration. The value configured in the Visualiser must exactly match the NAS Identifier condition in the ClearPass Service.
+Endpoint Repository conditions show match counts with links to **Repository Search** and endpoint details. Reports can be downloaded as print-ready PDF or complete JSON.
 
-#### ClearPass Change Review
+### Unused Objects
 
-The read-only **Review ClearPass Changes** operation reports each object as:
-
-- `existing` - the object exists and matches the required configuration
-- `would_create` - the object is missing and will be created
-- `conflict` - the object exists but does not match the required configuration
-
-Review uses an AJAX request, so entered secrets remain in the browser form. No ClearPass configuration changes are made during review.
-
-When automatic configuration is enabled, a successful review is required before **Save and Continue** becomes available. Changing a relevant setup field invalidates the previous review.
-
-#### Safety and Idempotence
-
-The assisted configuration workflow is designed to preserve existing ClearPass configuration.
-
-- Existing matching objects are validated and left unchanged.
-- Existing Local User passwords are not reset.
-- Passwords are required only when a Local User needs to be created.
-- Local User passwords are not saved in `.visualiser.env`.
-- Existing conflicting objects are not replaced or updated automatically.
-- Missing objects are created in dependency order.
-- Created objects are retrieved and verified after creation.
-- Repeated provisioning is idempotent.
-- Setup Complete reports which objects were created and which already existed.
-- API-assisted configuration never deletes existing ClearPass objects.
-
-### Configuration Management
-
-Visualiser configuration created by Initial Setup is stored locally in:
-
-```text
-.visualiser.env
-```
-
-The application explicitly loads this file during startup. The legacy `config.yaml` configuration path has been removed, and the Visualiser application no longer implicitly loads application configuration from a conventional `.env` file. For Docker deployments, a project-level .env file may still be used by Docker Compose for deployment settings such as the container timezone.
-
-```text
-Fresh Installation
-        │
-        ▼
-Initial Setup
-        │
-        ├── Configuration Validation
-        ├── Optional ClearPass Change Review
-        └── Optional API-Assisted Provisioning
-        │
-        ▼
-.visualiser.env
-        │
-        ▼
-Setup Complete
-        │
-        ▼
-Start Visualiser
-        │
-        ▼
-Login
-```
-
-The `.visualiser.env` file contains sensitive configuration and is excluded from Git.
-
-### Current-Hour Service Hit Counts
-
-The dashboard displays Insight-backed Hit Counts for configured ClearPass Services. Hit Counts represent Service matches recorded during the current clock hour.
-
-Features include:
-
-- Current-hour Hit Count for each configured Service
-- Dashboard Top Hits and Least Hits summaries
-- Sortable Service table by Order, Name, Type and Hit Count
-- Hit Count visibility on individual Service Visualise pages
-- Information tooltips explaining the current-hour scope
-- Hit Counts reset naturally at the start of each clock hour
-- Hit Counts are recalculated when **Refresh Services** rebuilds the Service cache
-
-Current-hour Hit Counts are derived from ClearPass Insight PostgreSQL authentication records using the built-in read-only `appexternal` account. ClearPass Service configuration continues to come from the ClearPass REST API.
-
-### Service Visualisation
-
-Visualise complete ClearPass service flows including:
-
-- Authentication Sources
-- Authorisation Sources
-- Role Mapping Policies
-- Role Mapping Rules
-- Enforcement Policies
-- Enforcement Profiles
-
-The Service Information panel also displays the current-hour Hit Count for the selected Service. The value uses the same cached Insight data displayed on the dashboard, keeping the dashboard and individual Service views consistent.
-
-### Interactive Policy Graph
-
-Interactive graph features include:
-
-- Zoom and pan
-- Fit and Centre graph
-- Reset layout
-- Expandable and collapsible policy branches
-- Node search
-- Previous and Next search navigation
-- Contextual object information
-- Direct Impact Analysis links from Enforcement Profile nodes
-- Direct Impact Analysis links from Enforcement Policy nodes
-- Direct Impact Analysis links from Role Mapping Policy nodes
-- Direct Impact Analysis links from mapped Role nodes
-- PNG, JPG and SVG export
-
-Unused Enforcement Policies and Role Mapping Policies can also be opened directly from the Unused Objects view and displayed using the policy graph.
-
-Impact Analysis links open reports in a separate browser tab, preserving the current graph zoom, layout, branch expansion and selected-node state.
-
-### Dashboard Impact Analysis Lookup
-
-The dashboard provides a unified lookup for every ClearPass object supported by Impact Analysis.
-
-The lookup indexes:
-- Enforcement Profiles
-- Enforcement Policies
-- Role Mapping Policies
-- Roles
-- Used objects
-- Unused objects
-- ClearPass built-in objects
-
-Lookup features include:
-- Combined search across all supported object types
-- Optional filtering by object type
-- Case-insensitive substring matching
-- Exact and prefix match prioritisation
-- Object-type badges for similarly named results
-- Keyboard navigation using the Up Arrow, Down Arrow, Enter and Escape keys
-- Direct opening of the selected Impact Analysis report in a new browser tab
-- Cache-only searches that do not call ClearPass for each typed character
-- Automatic lookup cache rebuild during application startup and Refresh Cache
-
-The lookup retains objects with the same name when the objects belong to different categories. Lookup identity is based on object type and case-insensitive object name.
-
-### Repository Search
-
-Directly analyse Endpoint Repository conditions referenced by Role Mapping Rules.
-
-Features include:
-
-- Matching endpoint counts
-- Repository search
-- Endpoint drill-down navigation
-- Rule condition analysis
-
-### Enforcement Profile Impact Analysis
-
-ClearPass Policy Visualiser provides read-only dependency impact reporting for Enforcement Profiles.
-
-Impact Analysis includes:
-
-- Referenced and unreferenced usage classification
-- Total affected Enforcement Policy count
-- Total affected Service count
-- Enforcement Profile ID, type, action and description
-- Enforcement Profile attribute reporting
-- Referencing Enforcement Policy names and IDs
-- Enforcement Policy descriptions, where configured
-- Policy-to-Service dependency relationships
-- Deduplicated affected Service inventory
-- Service IDs and direct navigation links
-- Objective operational impact observations
-- Support for rule-applied Enforcement Profiles
-- Support for default Enforcement Profiles
-- Support for system-defined Enforcement Profiles
-- Dependency discovery for Enforcement Policies not currently assigned to a Service
-- Direct Impact Analysis access from Enforcement Profile graph nodes
-- Separate-tab report workflow that preserves the current graph state
-- Reports can be downloaded as print-optimised PDF documents or complete structured JSON datasets
-
-Impact Analysis distinguishes between:
-
-- Enforcement Profiles that are not referenced by any Enforcement Policy
-- Enforcement Profiles referenced only by policies that are not assigned to a Service
-- Enforcement Profiles referenced by policies used across one or more Services
-
-### Enforcement Policy Impact Analysis
-
-Enforcement Policy Impact Analysis reports the complete operational scope of a selected Enforcement Policy.
-
-The report includes:
-
-- Assigned and Not Assigned usage classification
-- Affected ClearPass Services
-- Enforcement Policy ID, description and rule evaluation algorithm
-- Policy rule and structured-condition inventory
-- Positive Endpoint Repository match counts with direct Repository Search links
-- Confirmed zero match counts without empty-result links
-- Clear distinction between zero matches and unavailable match counts
-- Unique dependent Enforcement Profile inventory
-- Deduplication of Enforcement Profiles used by multiple rules
-- Rule numbers associated with each dependent Enforcement Profile
-- Rule-applied and default-profile classification
-- Default Outcome when no policy rule matches
-- Direct links to Enforcement Profile Impact Analysis
-- Shared Enforcement Profile usage across other Enforcement Policies and Services
-- Objective observations describing the discovered dependency scope
-- Reports can be downloaded as print-optimised PDF documents or complete structured JSON datasets
-
-The report is available from Service graphs, standalone Enforcement Policy graphs and Dashboard Impact Analysis Lookup.
+Dependency-based detection of unused Enforcement Profiles, Enforcement Policies, Role Mapping Policies and Roles, with **Copy All**. Built-in objects in square brackets are excluded. An Enforcement Profile counts as unused only when no Enforcement Policy references it.
 
 ### Endpoint Profiling
 
-Endpoint profiling can display:
-
-- Hostname
-- Device Category
-- Device Family
-- Device Name
-- Device Type
-- Expanded Device Type
-- MAC Vendor
-- IPv4 Address
-
-Endpoint profiling data is loaded directly from the ClearPass PostgreSQL database using the built-in `appexternal` account.
-
-The PostgreSQL endpoint profiling cache is loaded during application startup. If PostgreSQL connectivity or authentication fails, cache initialisation stops and the Visualiser does not fall back to REST API endpoint profiling.
-
-### Enforcement Profile Analysis
-
-Provides detailed visibility into Enforcement Profile configuration and dependencies, including profile metadata, enforcement attributes and dependent policies and services.
-
-### Role Mapping Policy Impact Analysis
-
-Role Mapping Policy Impact Analysis reports how a selected Role Mapping Policy assigns Roles across ClearPass Services.
-
-The report includes:
-
-- Assigned and Not Assigned usage classification
-- Affected ClearPass Services
-- Role Mapping Policy ID, description and rule evaluation algorithm
-- Mapping rule and structured-condition inventory
-- Positive repository match counts with direct Repository Search links
-- Confirmed zero match counts without empty-result links
-- Clear distinction between zero matches and unavailable match counts
-- Unique mapped Role inventory
-- Deduplication of Roles assigned by multiple rules
-- Rule numbers associated with each mapped Role
-- Rule-assigned and default-Role classification
-- Default Outcome when no mapping rule matches
-- Role descriptions from the cached ClearPass Role inventory
-- Objective observations describing the discovered assignment scope
-- Reports can be downloaded as print-optimised PDF documents or complete structured JSON datasets
-
-The report is available from Service graphs, standalone Role Mapping Policy graphs and Dashboard Impact Analysis Lookup.
-
-### Role Impact Analysis
-
-Role Impact Analysis reports where a selected ClearPass Role is referenced and the resulting policy and Service dependencies.
-
-The report includes:
-
-- Referenced and Not Referenced usage classification
-- Role ID and description
-- Referencing Role Mapping Policies
-- Rule-assigned and default-Role references
-- `Tips:Role` conditions in Role Mapping Policies
-- `Tips:Role` conditions in Enforcement Policies
-- Enabled Guest Operator Profile references
-- Relevant rule numbers and conditions
-- Deduplicated affected ClearPass Services
-- Objective observations describing the discovered dependency scope
-- Reports can be downloaded as print-optimised PDF documents or complete structured JSON datasets
-
-The report is available from Dashboard Impact Analysis Lookup and mapped Role nodes in policy visualisations.
-
-### Unused Object Analysis
-
-Identifies ClearPass configuration objects that are no longer referenced, based on dependency analysis rather than name matching.
-
-Detects unused:
-
-- Enforcement Profiles, including default enforcement profiles
-- Enforcement Policies
-- Role Mapping Policies
-- Roles
-
-Role usage is resolved across Role Mapping Policies, assigned roles, default roles, `Tips:Role` conditions, Enforcement Policies and Guest Operator Profiles through the built-in `[Guest Roles]` mapping.
-
-ClearPass built-in objects named with square brackets are automatically excluded. Each unused-object category provides a one-click **Copy All** option.
-
-The Enforcement Profile unused count is intentionally strict. Only profiles with no Enforcement Policy references are counted as unused. Profiles referenced exclusively by policies that are not assigned to a Service are excluded from the unused count and remain visible through Impact Analysis. The Unused Objects interface includes an information tooltip explaining this distinction.
+Endpoint profiling (hostname, device category, family, name and type, MAC vendor, IPv4 address) is loaded from ClearPass PostgreSQL at startup. In the reference environment this took about 0.08 seconds, compared with about 74 seconds through the REST API.
 
 ---
 
-## Architecture
+## Architecture and Data Sources
 
-```text
-Browser
-    │
-    ▼
-Flask Web Application
-    │
-    ├── Initial Setup
-    │       ├── Configuration Validation
-    │       ├── ClearPass Change Review
-    │       ├── Optional API-Assisted Provisioning
-    │       │       ├── Roles
-    │       │       ├── Local Users
-    │       │       ├── Enforcement Profiles
-    │       │       ├── Enforcement Policy
-    │       │       └── RADIUS Service
-    │       └── .visualiser.env
-    │
-    ├── Authentication
-    │       └── ClearPass RADIUS
-    │
-    ├── Policy Visualisation
-    ├── Dependency Analysis
-    ├── Impact Analysis
-    │       ├── Enforcement Profiles
-    │       ├── Enforcement Policies
-    │       ├── Role Mapping Policies
-    │       ├── Roles
-    │       └── Dashboard Lookup Cache
-    ├── Unused Object Analysis
-    │
-    ├── ClearPass REST APIs
-    │       ├── Services
-    │       ├── Authentication Sources
-    │       ├── Authorisation Sources
-    │       ├── Role Mapping Policies
-    │       ├── Enforcement Policies
-    │       ├── Enforcement Profiles
-    │       ├── Roles
-    │       ├── Local Users
-    │       ├── Operator Profiles
-    │       └── Endpoint Repository
-    │
-    └── PostgreSQL
-            ├── Endpoint Profiling Cache
-            └── Insight Current-Hour Service Hit Counts
+| Data | Source | Authentication |
+|------|--------|----------------|
+| CPV user sign-in | ClearPass RADIUS, per environment | PAP |
+| Services, policies, profiles, Roles, Local Users, Operator Profiles, Endpoint Repository | ClearPass REST API | OAuth 2.0 client credentials |
+| Endpoint profiling | PostgreSQL `tipsdb` (port 5432), `tips_endpoint_profiles` | `appexternal` |
+| Current-hour Service Hit Counts | PostgreSQL `insightdb` (port 5433), `public.auth` | `appexternal` |
+
+CPV application roles come from the RADIUS reply attribute `Aruba-User-Role`:
+
+| `Aruba-User-Role` | CPV access |
+|-------------------|------------|
+| `Admin` | Administrator, including the Environments page |
+| `ReadOnly` | Read-only |
+
+---
+
+## Requirements
+
+- Aruba ClearPass Policy Manager. Tested with 6.11.x and 6.14.1.
+- A ClearPass API Client (client credentials) with read access to the objects above, plus create access if assisted provisioning is used. Find it under **Administration › API Services › API Clients**.
+- The CPV host defined as a RADIUS Network Device in each ClearPass. ClearPass sees the Docker host's address, not the container's.
+- Network access from CPV to ClearPass on HTTPS (443), RADIUS (UDP 1812), PostgreSQL (5432) and Insight (5433).
+- The `appexternal` password, set under **Administration › Server Manager › Server Configuration › Cluster-Wide Parameters › Database** (External PostgreSQL Password).
+- Docker Engine with Docker Compose v2 (recommended), or Python 3.11 or later.
+
+---
+
+## Installation
+
+### Docker (recommended)
+
+```bash
+git clone <repository-url>
+cd clearpass-policy-visualiser
+docker compose up --build
+```
+
+Open `http://127.0.0.1:5000`. A new installation starts in Initial Setup.
+
+| Task | Command |
+|------|---------|
+| Run in the background | `docker compose up -d` |
+| Follow the logs | `docker compose logs -f` |
+| Stop | `docker compose down` |
+
+Configuration is kept in the `clearpass-visualiser-data` volume and survives container rebuilds. The container runs as a non-root user and publishes only `127.0.0.1:5000`.
+
+The container uses UTC by default. To change it, create a `.env` file next to `compose.yaml` containing, for example, `TZ=Australia/Melbourne`. This file is only for Docker settings and is separate from `.visualiser.env`.
+
+### Native Python
+
+```bash
+git clone <repository-url>
+cd clearpass-policy-visualiser
+python -m venv venv
+venv\Scripts\activate          # Windows
+source venv/bin/activate       # Linux and macOS
+python -m pip install -r requirements.txt
+python app.py
 ```
 
 ---
 
-## Authentication and Data Sources
+## Configuration Files
 
-### ClearPass REST APIs
+| File | Contents |
+|------|----------|
+| `.visualiser.env` | Initial environment settings and secrets, written by Initial Setup or the Environments page |
+| `.visualiser.env.prev` | Previous initial environment settings, kept after an edit on the Environments page |
+| `environments/<id>.env` | Settings and secrets for each additional environment |
+| `.flask_secret` | Session signing key, generated on first start unless `FLASK_SECRET_KEY` is set |
 
-Service, Role Mapping, Enforcement Policy and Enforcement Profile data is retrieved using the ClearPass REST APIs.
+With Docker these are in `/data` in the `clearpass-visualiser-data` volume. Natively they are in the application directory. All are written with owner-only permissions, are excluded from Git, and should be protected and backed up as secrets.
 
-When API-assisted configuration is enabled, the same integration is also used to inspect, create and verify the roles, Local Users, Enforcement Profiles, Enforcement Policy and RADIUS Service required by Policy Visualiser.
+Values are stored quoted, so secrets containing spaces, `#` or quotes are kept exactly. A value containing a variable reference such as `${NAME}` is refused.
 
-API authentication uses OAuth 2.0 Client Credentials Grant:
+To change connection settings, use **Manage environments**. You do not need to edit the files or restart CPV.
 
-```text
-grant_type=client_credentials
-```
+---
 
-The API client requires permissions appropriate to the data retrieval and optional configuration operations used by the Visualiser, including:
+## Refreshing Data
 
-- Services
-- Service configuration
-- Authentication Sources
-- Authorisation Sources
-- Role Mapping Policies
-- Enforcement Policies
-- Enforcement Profiles
-- Roles
-- Local Users
-- Guest Operator Profiles
-- Endpoint Repository data
+**Refresh Services** rebuilds the active environment's data from ClearPass: health, Services, Hit Counts, Roles, reference caches, Unused Objects and the Impact Analysis lookup. Other environments are not affected.
 
-The ClearPass API client can be found or created under:
+---
 
-```text
-Home › Administration › API Services › API Clients
-```
+## Security Considerations
 
-### User Authentication
-
-Users authenticate against ClearPass using RADIUS PAP authentication. The application supports role-based access using reply attributes including:
-
-```text
-Aruba-User-Role
-Filter-Id
-Class
-```
-
-| Aruba-User-Role | Application Role |
-|-----------------|------------------|
-| Admin | Administrator |
-| ReadOnly | Read Only |
-
-The required RADIUS server, port, shared secret and NAS Identifier are configured through Initial Setup.
-
-### PostgreSQL Endpoint Profiling
-
-Endpoint profiling information is loaded directly from the ClearPass PostgreSQL database using the built-in account:
-
-```text
-appexternal
-```
-
-The Visualiser queries:
-
-```text
-tips_endpoint_profiles
-```
-
-Use the External PostgreSQL Password configured on the Database tab.
-
-Initial Setup requests the PostgreSQL host, port, database, username, password and password confirmation. The PostgreSQL connection is validated before setup can complete.
-
-PostgreSQL access is required for endpoint profiling. If the PostgreSQL endpoint profiling cache cannot be loaded during application startup, cache initialisation stops rather than falling back to REST API endpoint profiling.
-
-### PostgreSQL Insight Service Hit Counts
-
-Current-hour Service Hit Counts are calculated from the ClearPass Insight PostgreSQL database using the built-in read-only `appexternal` account.
-
-The Visualiser queries:
-
-```text
-Database: insightdb
-Port: 5433
-Table: public.auth
-```
-Authentication records are counted by Service from the start of the current clock hour to the time the Service cache is refreshed.
-
-The existing PostgreSQL host, username, password and SSL mode configured for the Visualiser are reused for Insight access.
-
-If the Insight query succeeds and a Service has no authentication records during the current hour, its Hit Count is 0. Insight query failures are handled separately from genuine zero activity.
-
-### Data Source Summary
-
-| Function | Data Source | Authentication |
-|----------|-------------|----------------|
-| User Login | ClearPass RADIUS | PAP |
-| Service Discovery | ClearPass REST API | OAuth 2.0 Client Credentials |
-| Authentication Sources | ClearPass REST API | OAuth 2.0 Client Credentials |
-| Authorisation Sources | ClearPass REST API | OAuth 2.0 Client Credentials |
-| Role Mapping Policies | ClearPass REST API | OAuth 2.0 Client Credentials |
-| Enforcement Policies | ClearPass REST API | OAuth 2.0 Client Credentials |
-| Enforcement Profiles | ClearPass REST API | OAuth 2.0 Client Credentials |
-| Roles | ClearPass REST API | OAuth 2.0 Client Credentials |
-| Local Users | ClearPass REST API | OAuth 2.0 Client Credentials |
-| Guest Operator Profiles | ClearPass REST API | OAuth 2.0 Client Credentials |
-| Endpoint Repository | ClearPass REST API | OAuth 2.0 Client Credentials |
-| Endpoint Profiling Cache | PostgreSQL | `appexternal` |
-| Current-Hour Service Hit Counts | PostgreSQL Insight (`insightdb`, port `5433`) | `appexternal` |
+- Restrict access to the CPV host and to the `clearpass-visualiser-data` volume.
+- Use a ClearPass API Client scoped to what CPV needs.
+- Enable SSL certificate verification when ClearPass has a trusted certificate.
+- Use the read-only review before assisted provisioning, and resolve any reported conflicts manually.
+- Delete `.visualiser.env.prev` and any manual backups when no longer needed, because they contain secrets.
+- Rotate credentials according to local policy, then update them through **Manage environments**.
 
 ---
 
 ## Project Structure
 
 ```text
-
 clearpass-policy-visualiser
-│
-├── app.py
-├── server.py
-├── version.py
-├── requirements.txt
-├── cp_paths.py
-│
-├── Dockerfile
-├── compose.yaml
-├── .dockerignore
-│
-├── cp_cache.py
-├── cp_client.py
-├── cp_endpoint.py
-├── cp_endpoint_sql.py
-├── cp_enforcement.py
-├── cp_graph.py
-├── cp_health.py
-├── cp_object_graph.py
-├── cp_provision.py
-├── cp_role_mapping.py
-├── cp_services.py
-├── cp_insight_sql.py
-├── cp_setup.py
-├── cp_unused_objects.py
-├── cp_impact_analysis.py
-├── cp_impact_lookup.py
-│
+├── app.py, server.py, version.py, cp_paths.py
+├── Dockerfile, compose.yaml, requirements.txt
+├── cp_env.py, cp_env_web.py         # per-environment state, sign-in and loading
+├── cp_environments.py               # environment registry and files
+├── cp_default_env.py                # editing the initial environment
+├── env_admin.py                     # Environments page
+├── cp_setup.py, cp_provision.py     # Initial Setup, validation and provisioning
+├── cp_netdiag.py                    # connection and RADIUS diagnostics
+├── cp_client.py, cp_cache.py, cp_health.py, cp_services.py
+├── cp_insight_sql.py, cp_endpoint.py, cp_endpoint_sql.py
+├── cp_enforcement.py, cp_role_mapping.py, cp_role_references.py
+├── cp_graph.py, cp_object_graph.py, cp_unused_objects.py
+├── cp_impact_analysis.py, cp_impact_lookup.py
 ├── auth/
-│
-├── sql/
-│   └── endpoint_profiles.sql
-│
+├── sql/endpoint_profiles.sql
 ├── templates/
-│   ├── endpoint_details.html
-│   ├── enforcement_profile_detail.html
-│   ├── index.html
-│   ├── login.html
-│   ├── object_detail.html
-│   ├── repository_search.html
-│   ├── service.html
-│   ├── setup.html
-│   ├── setup_complete.html
-│   ├── enforcement_policy_impact_analysis.html
-│   ├── impact_analysis.html
-│   ├── role_impact_analysis.html
-│   ├── role_mapping_policy_impact_analysis.html
-│   └── unused_objects.html
-│
-├── static/
-│   └── service_graph.js
-│
+├── static/service_graph.js
 ├── screenshots/
-│
-├── LICENSE
-├── NOTICE
-└── README.md
-
+└── LICENSE, NOTICE, README.md
 ```
-
----
-
-## Python Dependencies
-
-```text
-Flask>=3.0.3
-Flask-Login>=0.6.3
-Flask-Limiter>=3.8.0
-python-dotenv>=1.0.1
-psycopg[binary]>=3.2.0
-pyclearpass>=1.0.8
-waitress>=3.0.2
-```
-
-PyYAML is not a direct production dependency because the legacy YAML configuration path has been removed.
-
----
-
-## Requirements
-
-### ClearPass Requirements
-
-- Aruba ClearPass Policy Manager
-- ClearPass REST API Client using OAuth 2.0 Client Credentials Grant
-- A ClearPass API Client with sufficient permissions to inspect and optionally create the required Policy Visualiser objects
-- Network connectivity from the Visualiser host to ClearPass
-- RADIUS configuration in ClearPass for Visualiser user authentication
-- PostgreSQL access using the built-in `appexternal` account for endpoint profiling and Insight-backed Service Hit Counts
-- Network access to ClearPass PostgreSQL port `5433` for Insight Service Hit Counts
-
-### Docker Deployment
-
-For Docker deployment:
-
-- Docker Engine
-- Docker Compose v2
-
-Docker Desktop is the simplest installation option for Windows and macOS and includes Docker Engine, Docker CLI and Docker Compose.
-
-Verify Docker and Docker Compose with:
-
-```bash
-docker --version
-docker compose version
-```
-
-Python does not need to be installed on the host when running the Visualiser using Docker.
-
-### Native Python Deployment
-
-For native deployment without Docker:
-
-- Python 3.11 or later
-- The Python dependencies listed in `requirements.txt`
-
----
-
-## Installation
-
-### Docker Deployment
-
-Docker is the recommended deployment method.
-
-Clone the repository and enter the project directory:
-
-```bash
-git clone <REPOSITORY-URL>
-cd clearpass-policy-visualiser
-```
-
-Start the Visualiser:
-
-```bash
-docker compose up
-```
-
-Docker Compose builds the Visualiser image and starts the application.
-
-When startup completes, open:
-
-`http://127.0.0.1:5000`
-
-On a new installation, the application starts without initialising the ClearPass caches and presents the Initial Setup page.
-
-To run the Visualiser in the background:
-
-```bash
-docker compose up -d
-```
-
-To follow application logs:
-
-```bash
-docker compose logs -f
-```
-
-To stop the Visualiser:
-
-```bash
-docker compose down
-```
-
-Visualiser configuration and the Flask session secret are stored in the persistent `clearpass-visualiser-data` Docker volume so that configuration survives container replacement.
-
-### Docker Timezone
-
-The container defaults to UTC.
-
-To use another timezone, create a `.env` file in the project directory and set `TZ`. For example:
-
-```text
-TZ=Australia/Melbourne
-```
-
-This Docker Compose `.env` file is used only for deployment settings such as the container timezone and is separate from the Visualiser `.visualiser.env` configuration created during Initial Setup.
-
-Then start the Visualiser normally:
-
-```bash
-docker compose up
-```
-
-### Native Python Deployment
-
-Python 3.11 or later is required for a native installation.
-
-```bash
-git clone <REPOSITORY-URL>
-cd clearpass-policy-visualiser
-python -m venv venv
-```
-
-#### Windows
-
-```bash
-venv\Scripts\activate
-```
-
-#### Linux
-
-```bash
-source venv/bin/activate
-```
-
-Install dependencies and start the application:
-
-```bash
-python -m pip install -r requirements.txt
-python app.py
-```
-
-On a new installation, the application starts without initialising ClearPass caches and presents the Initial Setup page.
-
----
-
-## Initial Setup
-
-The Initial Setup wizard replaces the previous manual application configuration using `.env` or `config.yaml` process.
-
-### RADIUS Authentication
-
-Configure:
-
-- RADIUS Server
-- RADIUS Port
-- RADIUS Shared Secret
-- Confirm RADIUS Shared Secret
-- NAS Identifier
-
-### ClearPass REST API
-
-Configure:
-
-- ClearPass API URL
-- Client ID
-- Client Secret
-- Confirm Client Secret
-- SSL certificate verification preference
-
-The API client can be found or created under:
-
-```text
-Home › Administration › API Services › API Clients
-```
-
-### Endpoint Profiling
-
-Endpoint profiling uses the ClearPass PostgreSQL database.
-
-Configure:
-
-- PostgreSQL Host
-- PostgreSQL Port
-- Database
-- Username
-- Password
-- Confirm Password
-
-The default PostgreSQL username is:
-
-```text
-appexternal
-```
-
-The `appexternal` password is configured in ClearPass under:
-
-```text
-Administration › Server Manager › Server Configuration
-› Cluster-Wide Parameters › Database
-```
-Use the External PostgreSQL Password configured on the Database tab.
-
-Initial Setup validates PostgreSQL connectivity before the configuration can be completed.
-
-### Assisted Configuration Flow
-
-```text
-Enable Automatic ClearPass Configuration
-        │
-        ▼
-Enter Visualiser Usernames and Required Passwords
-        │
-        ▼
-Review ClearPass Changes
-        │
-        ├── Existing
-        ├── Would Create
-        └── Conflict
-        │
-        ▼
-Save and Continue
-        │
-        ▼
-Run Fresh Server-Side Validation
-        │
-        ▼
-Create Missing ClearPass Objects
-        │
-        ▼
-Verify Provisioned Objects
-        │
-        ▼
-Save .visualiser.env
-        │
-        ▼
-Setup Complete
-```
-
-If automatic configuration is not selected, Initial Setup follows the manual ClearPass configuration path and does not create or modify ClearPass objects.
-
----
-
-## Configuration Files and Secrets
-
-### `.visualiser.env`
-
-Initial Setup creates `.visualiser.env`, which contains active Visualiser configuration and may include:
-
-- ClearPass API Client Secret
-- RADIUS Shared Secret
-- PostgreSQL password
-
-Do not commit this file to source control. The supplied `.gitignore` excludes it.
-
-ClearPass Local User passwords entered for API-assisted configuration are used only when creating missing users. These passwords are not written to:
-
-- `.visualiser.env`
-- the Flask session
-- rendered HTML
-- provisioning result data
-- application logs
-
-Existing matching Local Users are preserved and their passwords are not reset.
-
-### `.flask_secret`
-
-If `FLASK_SECRET_KEY` is not explicitly configured, the application generates a persistent Flask session secret and stores it in `.flask_secret`. This file is excluded from Git.
-
-### Docker Persistent Storage
-
-For Docker deployments, `.visualiser.env` and `.flask_secret` are stored in the persistent `clearpass-visualiser-data` Docker volume.
-
-The persistent volume preserves the Visualiser configuration and Flask session secret when the container is stopped or recreated.
-
-For native Python deployments, these files are stored in the local application directory.
-
-### Correcting Saved Credentials
-
-To correct connection credentials after Initial Setup:
-
-1. Stop Policy Visualiser.
-2. Edit `.visualiser.env`.
-3. Update the affected value.
-4. Ensure the value matches the corresponding ClearPass configuration.
-5. Restart Policy Visualiser.
-
-Common values include:
-
-```text
-CLEARPASS_CLIENT_SECRET
-RADIUS_SECRET
-SQL_PASSWORD
-```
-
-A restart is required because the Visualiser loads `.visualiser.env` during application startup.
-
-If the RADIUS secret is changed, the value must match the shared secret configured for the Visualiser RADIUS client in ClearPass. If the API Client Secret is changed, the value must match the corresponding ClearPass API Client.
-
----
-
-## Starting the Visualiser
-
-### Docker
-
-For an existing configured Docker installation:
-
-```bash
-docker compose up
-```
-
-Or run in the background:
-
-```bash
-docker compose up -d
-```
-
-### Native Python
-
-For an existing configured native installation:
-
-```bash
-python app.py
-```
-
-On subsequent launches with a complete configuration, the Visualiser automatically initialises the caches before starting the web application.
-
-Startup includes:
-
-- ClearPass service discovery
-- Current-hour Service Hit Count enrichment from ClearPass Insight
-- ClearPass health check
-- Endpoint profiling cache
-- Role cache
-- Enforcement Profile reference cache
-- Role Mapping reference cache
-- Unused Object cache
-- Impact Analysis lookup cache
-
-The Setup Complete page displays an animated loading overlay while the initial cache is being built.
-
----
-
-## Refreshing Cached Data
-
-The dashboard provides a cache refresh operation which rebuilds Visualiser data from ClearPass, including health, Services, Roles, Enforcement Profile references, Role Mapping references, Unused Object analysis and the Impact Analysis lookup index.
-
-Current-hour Service Hit Counts are also recalculated from ClearPass Insight whenever **Refresh Services** is selected.
-
-Hit Counts represent activity from the start of the current clock hour. When the hour changes, authentication records from the previous hour are no longer included the next time Services are refreshed.
-
----
-
-## PostgreSQL Endpoint Profiling Performance
-
-### Reference Results
-
-| Method | Time |
-|--------|------|
-| REST API | ~74 seconds |
-| PostgreSQL | ~0.08 seconds |
-
-The REST API result is retained as a historical performance comparison. ClearPass Policy Visualiser v1.6.0 uses PostgreSQL for endpoint profiling and does not fall back to REST API endpoint profiling.
-
-Reference environment:
-
-```text
-Endpoint Profiles: 376
-```
-
-These figures are observations from the reference environment and are not guaranteed in other deployments.
-
----
-
-## Typical Use Cases
-
-- Troubleshooting authentication failures
-- Change impact analysis
-- ClearPass documentation
-- Configuration reviews
-- Configuration cleanup
-- Endpoint repository and profiling analysis
-- Operational knowledge transfer
-- Pre-change dependency review for Enforcement Policies and Role Mapping Policies
-- Rapid lookup of used, unused and built-in policy objects
 
 ---
 
 ## Roadmap
 
-Planned enhancements include:
-
-- Multi-environment ClearPass support
-- Secure administrator-only configuration management with granular role-based access controls
+- Granular role-based access controls for administrative and analysis functions
 - Native ClearPass Extension integration
 
 ---
 
 ## Changelog
 
+### v1.7.0
+
+#### Multiple ClearPass environments
+- Up to three environments with free-text names and an optional production flag.
+- Separate REST API, RADIUS and PostgreSQL settings, cached data and sign-in for each environment.
+- Navbar environment selector, with the active environment shown on every page and report.
+- Background loading of additional environments, with an animated loading panel and **Try again**.
+- Environment name tags in the application log, PDF report headers and exported file names.
+- ClearPass version shown on the dashboard connectivity card.
+
+#### Environments page
+- Add, edit, rename and remove environments, available to administrators from **Manage environments**.
+- Add form follows Initial Setup, with guidance, automatic host defaults and optional assisted provisioning.
+- Initial environment connection settings can be edited and applied without a restart. Previous settings are kept as `.visualiser.env.prev`, and an unconfirmed RADIUS change needs explicit confirmation.
+- Environment status updates automatically while an environment is loading.
+
+#### Connection diagnostics
+- Plain-language explanations for DNS, refused, blocked, unreachable and no-route failures, using DNS, ping and port probes.
+- Specific messages for wrong REST API paths, `http://` and port 80, redirects, certificate errors and PostgreSQL password or address rejections.
+- The connectivity check now tests the port the REST API really uses.
+- Repeated failures on the same host are reported once.
+- RADIUS reachability and shared-secret check using a `cpv-connectivity-test` request.
+- Amber warnings for PostgreSQL or RADIUS hosts that differ from the API host or were copied from another environment.
+
+#### Other changes
+- Hit Counts show `n/a` when Insight is unavailable, and the environment still loads.
+- Initial Setup stores values quoted and verifies the file before replacing the old one.
+- Duplicate messages are no longer shown twice on setup pages.
+- The navbar has been redesigned, including a **Manage environments** button.
+- Shared Role analysis and the standalone packaged release were removed from the roadmap.
+
 ### v1.6.1
-
-#### Service Hit Counts
-
-- Added current-hour Service Hit Counts backed by ClearPass Insight PostgreSQL authentication data.
-- Added current-hour Top Hits and Least Hits summaries to the dashboard.
-- Added Hit Count visibility to the Configured Services table.
-- Added Hit Count visibility to individual Service Visualise pages.
-- Added ClearPass Insight PostgreSQL integration using `insightdb` on port `5433` with the built-in read-only `appexternal` account.
-- Added current-hour Hit Count refresh during application startup and **Refresh Services**.
-- Added an information tooltip explaining that Hit Counts cover the current clock hour and update when Services are refreshed.
-- Kept Insight query failures distinct from genuine zero Service activity.
-
-#### Service Table Sorting
-
-- Added sortable **Order**, **Name**, **Type** and **Hit Count** columns.
-- Added numeric sorting for Order and Hit Count.
-- Added ascending and descending Service name sorting.
-- Added persistent sort indicators while preserving the Hit Count information icon.
+- Current-hour Service Hit Counts from ClearPass Insight, with Top and Least Hits on the dashboard and on Service pages.
+- Service table sortable by Order, Name, Type and Hit Count.
 
 ### v1.6.0
+- Licence changed from MIT to Apache 2.0, and a `NOTICE` file was added.
+- Docker deployment with Compose, Waitress, a non-root user, a persistent volume and `TZ` support.
+- Endpoint profiling moved to PostgreSQL, with no REST API fallback.
 
-#### Licensing
-
-- Changed ClearPass Policy Visualiser licensing from the MIT License
-  to the Apache License, Version 2.0.
-- Added a `NOTICE` file containing project attribution information.
-
-#### Docker Deployment
-
-- Added Docker container deployment with Docker Compose.
-- Added Waitress as the production WSGI server.
-- Added persistent container storage for Visualiser configuration and Flask session secrets.
-- Added non-root container execution and restricted permissions for sensitive configuration files.
-- Added configurable container timezone support using the `TZ` environment variable.
-- Added persistent data path handling for native and container deployments.
-
-#### Endpoint Profiling
-
-- Changed endpoint profiling to use the ClearPass PostgreSQL database.
-- Removed REST API fallback for endpoint profiling when PostgreSQL is unavailable.
-- Updated Initial Setup to configure and validate PostgreSQL endpoint profiling access.
-- Improved endpoint profiling cache initialisation and logging.
-
-#### Cache Management
-
-- Updated cache refresh handling so Last Refresh reflects completion of a successful manual refresh.
-
-### v1.5.3
-
-- Improved handling and diagnostics for unexpected ClearPass Endpoint and Guest API responses.
-- Added validation for non-JSON, malformed and API error responses to prevent uncontrolled cache initialisation failures.
-- Improved cache initialisation state tracking so partially populated caches are not treated as fully initialised.
-- Added graceful handling when the dashboard is requested before cache initialisation completes.
-- Improved cache refresh state handling and reset of cached unused-object data during refresh.
-- Corrected endpoint preload logging so it no longer incorrectly identifies PostgreSQL as the active source before the configured source is determined.
-
-### v1.5.2
-
-- Added Impact Analysis for ClearPass Roles.
-- Added Role dependency analysis across policies, profiles and affected Services.
-- Added Role Impact Analysis links from policy visualisations.
-
-
-### v1.5.1
-
-#### Impact Analysis Report Export
-
-- Added PDF and JSON downloads to all Impact Analysis reports
-- Added print-optimised A4 PDF layouts with improved typography and pagination
-- Added complete structured JSON exports for comparison, automation and support
-- Added object-aware filenames, Visualiser version and export timestamps
-- Added an accessible **Download Report** menu with keyboard support
-
-### v1.5.0
-
-#### Enforcement Policy Impact Analysis
-
-- Added read-only Impact Analysis reports for Enforcement Policies
-- Added Assigned and Not Assigned usage classification
-- Added affected Service discovery and direct Service navigation
-- Added Enforcement Policy IDs, descriptions and friendly rule evaluation algorithms
-- Added complete policy rule and structured-condition reporting
-- Added unique dependent Enforcement Profile inventories
-- Added deduplication of profiles used by multiple rules
-- Added rule-applied and default-profile classifications
-- Added Default Outcome reporting for unmatched policy requests
-- Added direct links to Enforcement Profile Impact Analysis
-- Added shared Enforcement Profile usage across other policies and Services
-- Added positive Repository Search links for supported condition match counts
-- Preserved confirmed zero counts without empty-result links
-- Preserved unavailable match counts as informational text
-
-#### Role Mapping Policy Impact Analysis
-
-- Added read-only Impact Analysis reports for Role Mapping Policies
-- Added Assigned and Not Assigned usage classification
-- Added affected Service discovery and direct Service navigation
-- Added Role Mapping Policy IDs, descriptions and friendly rule evaluation algorithms
-- Added complete mapping rule and structured-condition reporting
-- Added unique mapped Role inventories
-- Added deduplication of Roles assigned by multiple rules
-- Added rule-assigned and default-Role classifications
-- Added Default Outcome reporting for unmatched Role Mapping requests
-- Added Role descriptions from the cached Role inventory
-- Added positive Repository Search links for supported condition match counts
-- Preserved confirmed zero counts without empty-result links
-- Reduced repeated unavailable-count messages in Role Mapping reports
-
-#### Dashboard Impact Analysis Lookup
-
-- Added a unified dashboard lookup for Enforcement Profiles, Enforcement Policies and Role Mapping Policies
-- Added lookup coverage for used, unused and ClearPass built-in objects
-- Added object-type filtering
-- Added case-insensitive exact, prefix and substring matching
-- Added object-type badges for similarly named results
-- Added keyboard navigation using the Up Arrow, Down Arrow, Enter and Escape keys
-- Added direct new-tab opening of selected Impact Analysis reports
-- Added filter-change reset to prevent incompatible stale selections
-- Added an authenticated cache-only lookup API
-- Added startup and Refresh Cache rebuild of the lookup index
-- Added complete paginated inventories for Enforcement Profiles, Enforcement Policies and Role Mapping Policies
-
-#### Graph Integration
-
-- Added direct Impact Analysis links to Enforcement Policy graph nodes
-- Added direct Impact Analysis links to Role Mapping Policy graph nodes
-- Added stable policy-name fields to Service and standalone object graphs
-- Preserved graph state by opening Impact Analysis reports in a new browser tab
-
-#### Unused Object Clarification
-
-- Added an information tooltip explaining the strict Enforcement Profile unused classification
-- Clarified that profiles referenced only by unassigned policies are excluded from the unused count
-
-#### Cache and Data Handling
-
-- Added complete paginated Enforcement Profile inventory retrieval
-- Added complete paginated Role Mapping Policy inventory retrieval
-- Added Impact Analysis lookup cache containing supported policy objects
-- Added lookup cache reset and rebuild during Refresh Cache
-- Added Enforcement Policy raw lookup-cache clearing during cache refresh
+### v1.5.x
+- **1.5.3:** more robust handling of unexpected Endpoint and Guest API responses, and of cache initialisation.
+- **1.5.2:** Role Impact Analysis.
+- **1.5.1:** PDF and JSON export for all Impact Analysis reports.
+- **1.5.0:** Enforcement Policy and Role Mapping Policy Impact Analysis, and the dashboard Impact Analysis Lookup.
 
 ### v1.4.0
+- Enforcement Profile Impact Analysis, including policies not assigned to a Service.
 
-#### Enforcement Profile Impact Analysis
+### v1.3.x
+- **1.3.1:** SVG graph export.
+- **1.3.0:** API-assisted ClearPass configuration with a read-only change review and idempotent provisioning.
 
-- Added read-only Impact Analysis reports for Enforcement Profiles
-- Added referenced and unreferenced usage classification
-- Added total affected Enforcement Policy and Service counts
-- Added complete Enforcement Profile metadata and attribute reporting
-- Added referencing Enforcement Policy names, IDs and descriptions
-- Added policy-to-Service dependency relationship reporting
-- Added deduplicated affected Service inventories
-- Added Service IDs and direct Service navigation
-- Added objective operational impact observations
-- Added support for rule-applied Enforcement Profiles
-- Added support for default Enforcement Profiles
-- Added support for system-defined Enforcement Profiles
-- Added direct Impact Analysis links to Enforcement Profile graph nodes
-- Added a separate-tab report workflow to preserve graph zoom, layout, branch expansion and selection state
-- Added a responsive Impact Analysis report interface
-
-#### Dependency Analysis
-
-- Expanded the Enforcement Profile reference cache to inspect all Enforcement Policies
-- Added paginated retrieval of Enforcement Policies from ClearPass
-- Added dependency discovery for Enforcement Policies not assigned to a Service
-- Distinguished profiles referenced by unused policies from completely unreferenced profiles
-- Preserved policy IDs and descriptions in the Enforcement Profile reference cache
-- Preserved Service IDs and policy-to-Service relationships
-- Added deduplication of policy and Service references
-- Preserved existing dependency results for Service-assigned Enforcement Policies
-
-#### Graph Integration
-
-- Added a dedicated `profile_name` data field to Enforcement Profile graph nodes
-- Added Impact Analysis access for rule-applied Enforcement Profile nodes
-- Added Impact Analysis access for default Enforcement Profile nodes
-- Added Impact Analysis access from Service and standalone Enforcement Policy graphs
-- Added secure new-tab navigation for Impact Analysis reports
-
-### v1.3.1
-
-#### Graph Export
-
-- Added SVG export for Service dependency graphs
-- Added SVG export for Role Mapping Policy graphs
-- Added SVG export for Enforcement Policy graphs
-- Added SVG export for policy graphs opened from Unused Objects
-- Added scalable vector nodes, labels, edges and directional arrowheads
-- Added export of the current visible graph arrangement and expansion state
-- Excluded collapsed branches from SVG exports
-- Excluded temporary selection and search highlights from SVG exports
-- Added adaptive node sizing and label wrapping
-- Preserved long identifiers without awkward character splitting
-- Added ClearPass Policy Visualiser branding, graph title, graph type and export timestamp
-
-
-#### Fixes
-
-- Fixed inactive PNG and JPG export options on unused-policy graphs
-- Corrected export dropdown markup for unused Role Mapping and Enforcement Policy views
-
-### v1.3.0
-
-#### API-Assisted ClearPass Configuration
-
-- Added optional automatic ClearPass configuration during Initial Setup
-- Added creation and validation of `Visualiser-Admin` and `Visualiser-Helpdesk` roles
-- Added creation and validation of Administrator and Helpdesk Local Users
-- Added creation and validation of Admin and ReadOnly Enforcement Profiles
-- Added creation and validation of `Visualiser Access Policy`
-- Added creation and validation of the enabled `Policy Visualiser` RADIUS Service
-- Added mandatory NAS Identifier validation
-- Added PAP and Local User Repository configuration
-- Added exact mapping of Visualiser roles to `Aruba-User-Role` values
-
-#### ClearPass Change Review
-
-- Added read-only **Review ClearPass Changes** workflow
-- Added `existing`, `would_create` and `conflict` states
-- Added eight-object provisioning preview
-- Added AJAX preview without clearing entered secrets
-- Added automatic scrolling to results and validation errors
-- Added password validation for missing Local Users
-- Added review invalidation when relevant values change
-- Added successful-review requirement before Save and Continue
-
-#### Provisioning Safety
-
-- Added idempotent provisioning
-- Added preservation of existing matching objects and Local User passwords
-- Added conflict detection without automatic replacement
-- Added read-after-create verification
-- Added dependency-order provisioning
-- Prevented Local User passwords from being written to `.visualiser.env`
-- Added mixed existing and newly created object support
-
-#### Initial Setup User Interface
-
-- Added automatic ClearPass configuration controls
-- Added two-column provisioning preview
-- Added clear next-step guidance after review
-- Added API Client and `appexternal` location guidance
-- Added PostgreSQL recommendation for faster profiling
-- Added Setup Complete provisioning summary and object counts
-- Added responsive four-column provisioning results
-- Added animated Start Visualiser loading overlay
-- Added reduced-motion-compatible loading animation
-
-#### Testing
-
-- Validated fresh, mixed and existing ClearPass configurations
-- Validated repeated idempotent provisioning
-- Validated Administrator and Helpdesk RADIUS authentication
-- Validated `Admin` and `ReadOnly` application role assignment
-
-### v1.2.0
-
-- Added browser-based Initial Setup and Setup Complete workflow
-- Added ClearPass, RADIUS and optional PostgreSQL configuration
-- Added connectivity validation and secure `.visualiser.env` management
-- Removed legacy `config.yaml` and implicit `.env` loading
-- Added secure Flask session secret generation
-
-### v1.1.1
-
-- Added clickable unused Enforcement Profiles and dedicated detail view
-- Added Enforcement Profile metadata and Enforcement Attribute visibility
-- Improved layout and navigation consistency
-
-### v1.1.0
-
-- Added Unused Object analysis for profiles, policies, Role Mapping Policies and roles
-- Added dependency analysis and Copy All workflows
-- Added startup and refresh caching
-
-### v1.0.0
-
-- Initial public release
-
----
-
-## Security Considerations
-
-The Visualiser handles credentials used to communicate with ClearPass and PostgreSQL.
-
-Files containing local secrets are excluded from Git, including:
-
-```text
-.visualiser.env
-.flask_secret
-cert.pem
-key.pem
-```
-
-Administrators should:
-
-- Protect access to the Visualiser host
-- Use an appropriately scoped ClearPass API Client
-- Protect RADIUS and PostgreSQL credentials
-- Restrict ClearPass PostgreSQL connectivity to the access required for endpoint profiling and read-only Insight Service Hit Counts
-- Use appropriate TLS and certificate verification settings
-- Use the read-only ClearPass change review before assisted configuration
-- Confirm any object reported as a conflict
-- Rotate credentials according to local security policy
-- Restart the Visualiser after manually changing `.visualiser.env`
-- Never commit `.visualiser.env` or `.flask_secret`
-
-API-assisted configuration never deletes existing ClearPass objects and never automatically replaces conflicting objects.
-
-For Docker deployments:
-
-- The Visualiser container runs as the non-root `visualiser` user.
-- The application port is published to `127.0.0.1:5000` by default.
-- Persistent configuration is stored in the `clearpass-visualiser-data` Docker volume.
-- Sensitive configuration files should remain readable and writable only by the Visualiser user.
+### v1.2.0 and earlier
+- **1.2.0:** browser-based Initial Setup, replacing `config.yaml`.
+- **1.1.x:** Unused Object analysis and Enforcement Profile details.
+- **1.0.0:** first public release.
 
 ---
 
 ## License
 
-ClearPass Policy Visualiser is licensed under the Apache License,
-Version 2.0.
-
-See the `LICENSE` file for the full license terms and the `NOTICE`
-file for attribution information.
-
----
+Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE`.
 
 ## Disclaimer
 
-This project is an independent community tool. It is not affiliated with, endorsed by, or supported by Hewlett Packard Enterprise (HPE).
-
-Always validate configuration changes before applying them to production environments. Unused Object results should be treated as analysis and review candidates.
-
----
+This is an independent community tool. It is not affiliated with, endorsed by or supported by Hewlett Packard Enterprise (HPE). Validate changes before applying them to production, and treat Unused Object results as candidates for review.
 
 ## Acknowledgements
 
-- Aruba ClearPass
-- HPE Aruba Networking
-- Flask
-- Cytoscape.js
-- pyclearpass
+Aruba ClearPass, HPE Aruba Networking, Flask, Cytoscape.js and pyclearpass.
 
 ---
 
-**ClearPass Policy Visualiser v1.6.1**
+**ClearPass Policy Visualiser v1.7.0**
 
 Visualise. Analyse. Troubleshoot.

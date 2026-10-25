@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Role Mapping Policy Impact Analysis - {{ impact.object.name }}</title>
+    <meta
+        name="cpv-environment"
+        content="{{ active_environment.name if active_environment else '' }}"
+    >    
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
     <style>
@@ -615,8 +619,11 @@
 </head>
 
 <body>
-    <nav class="navbar">
-        <span class="navbar-brand"><span class="brand-green">ClearPass</span> Policy Visualiser</span>
+    <nav class="navbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <span class="navbar-brand">
+            <span class="brand-green">ClearPass</span> Policy Visualiser
+        </span>
+        {% with indicator_only=true %}{% include '_environment_nav.html' %}{% endwith %}
     </nav>
 
     <main class="content-wrapper">
@@ -629,7 +636,7 @@
             <div class="print-report-metadata">
                 ClearPass Policy Visualiser{% if version %} v{{ version }}{% endif %}
                 <br>
-                Exported: <span id="printExportTimestamp"></span>
+                {% if active_environment %}Environment: {{ active_environment.name }}<br>{% endif %}Exported: <span id="printExportTimestamp"></span>
             </div>
 
         </header>
@@ -1045,6 +1052,26 @@
                     .toISOString()
                     .split("T")[0];
 
+            const environmentMeta =
+                document.querySelector(
+                    'meta[name="cpv-environment"]'
+                );
+
+            const safeEnvironment =
+                (
+                    environmentMeta
+                        ? environmentMeta.getAttribute("content")
+                        : ""
+                )
+                .replace(
+                    /[^a-zA-Z0-9_-]+/g,
+                    "_"
+                )
+                .replace(
+                    /^_+|_+$/g,
+                    ""
+                );
+
             return (
                 `${safeObjectName}_`
                 +
@@ -1053,6 +1080,12 @@
                 `Impact_Analysis_`
                 +
                 `${date}`
+                +
+                (
+                    safeEnvironment
+                        ? `_${safeEnvironment}`
+                        : ""
+                )
             );
 
         }

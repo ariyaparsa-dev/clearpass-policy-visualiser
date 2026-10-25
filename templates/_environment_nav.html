@@ -1,0 +1,60 @@
+{# Environment indicator and selector shared by the pages that have their own
+   navbar. It uses inline styles only, so it also works on pages without
+   Bootstrap. The values come from the app-wide context processor.
+
+   Set indicator_only to true to show the environment name and badge without
+   the switcher or the Environments link. Use it on report pages that open in
+   a new tab, because the environment is stored in the browser session and
+   switching there would change it for every open tab:
+
+       {% with indicator_only=true %}{% include '_environment_nav.html' %}{% endwith %}
+#}
+{% if active_environment and (environments|length > 1 or active_environment.production) %}
+<div style="display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:16px;">
+
+    {% if indicator_only %}
+    <div style="display:flex; align-items:center; gap:8px; font-size:0.85rem;">
+        <span style="color:#9CA3AF;">Environment</span>
+        {% if active_environment.production %}
+        <span style="background:#DC3545; color:#FFFFFF; font-size:0.7rem; font-weight:700;
+                     padding:3px 8px; border-radius:6px;">PRODUCTION</span>
+        {% endif %}
+        <span style="color:#E2E8F0; font-weight:600;">{{ active_environment.name }}</span>
+    </div>
+    {% else %}
+    <form method="post"
+          action="{{ url_for('auth.switch_environment') }}"
+          style="display:flex; align-items:center; gap:8px; margin:0;">
+        <span style="font-size:0.8rem; color:#9CA3AF;">Environment</span>
+        {% if active_environment.production %}
+        <span style="background:#DC3545; color:#FFFFFF; font-size:0.7rem; font-weight:700;
+                     padding:3px 8px; border-radius:6px;">PRODUCTION</span>
+        {% endif %}
+        {% if environments|length > 1 %}
+        <select name="environment"
+                onchange="this.form.submit()"
+                style="background:#111827; color:#E2E8F0; border:1px solid #01A982;
+                       border-radius:6px; font-size:0.9rem; padding:5px 10px;">
+            {% for e in environments %}
+            <option value="{{ e.id }}" {% if e.id == active_environment.id %}selected{% endif %}>
+                {{ e.name }}{% if not e.signed_in %} (sign in){% endif %}
+            </option>
+            {% endfor %}
+        </select>
+        {% else %}
+        <span style="font-size:0.9rem; color:#E2E8F0;">{{ active_environment.name }}</span>
+        {% endif %}
+    </form>
+
+    {% if current_user.is_authenticated and current_user.role == 'Admin' %}
+    <a href="{{ url_for('env_admin.index') }}"
+        class="btn btn-sm btn-outline-success"
+        title="Add, edit or remove ClearPass environments">
+        &#9881; Manage environments
+    </a>
+    {% endif %}
+    
+    {% endif %}
+
+</div>
+{% endif %}

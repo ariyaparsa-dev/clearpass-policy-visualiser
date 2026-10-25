@@ -1,4 +1,5 @@
 import os
+import cp_env
 import time
 import logging
 from pathlib import Path
@@ -15,7 +16,7 @@ class EndpointSqlError(Exception):
 
 
 def _required_env(name):
-    value = os.getenv(name)
+    value = cp_env.getenv(name)
 
     if not value:
         raise EndpointSqlError(
@@ -39,7 +40,7 @@ def _normalise_mac(mac):
 
 
 def _get_sql_query():
-    query_file = os.getenv(
+    query_file = cp_env.getenv(
         "CP_SQL_QUERY_FILE",
         "sql/endpoint_profiles.sql"
     )
@@ -104,11 +105,11 @@ def get_endpoint_profiles_from_sql():
     start = time.time()
 
     host = _required_env("CP_SQL_HOST")
-    port = int(os.getenv("CP_SQL_PORT", "5432"))
+    port = int(cp_env.getenv("CP_SQL_PORT", "5432"))
     database = _required_env("CP_SQL_DATABASE")
     username = _required_env("CP_SQL_USERNAME")
     password = _required_env("CP_SQL_PASSWORD")
-    sslmode = os.getenv("CP_SQL_SSLMODE", "prefer")
+    sslmode = cp_env.getenv("CP_SQL_SSLMODE", "prefer")
 
     query = _get_sql_query()
 

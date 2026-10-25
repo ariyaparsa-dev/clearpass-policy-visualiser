@@ -107,7 +107,11 @@
 </head>
 
 <body>
-
+    <div style="margin-bottom:16px;">
+        {% with indicator_only=true %}
+        {% include '_environment_nav.html' %}
+        {% endwith %}
+    </div>
     <h1>Repository Search</h1>
 
     <div class="summary">

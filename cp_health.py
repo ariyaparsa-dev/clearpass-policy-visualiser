@@ -1,7 +1,10 @@
 import os
+import cp_env
 import time
 import socket
 import logging
+from pyclearpass import ApiLocalServerConfiguration
+from cp_env import ScopedDict
 
 from urllib.parse import urlparse
 
@@ -37,6 +40,69 @@ def tcp_check(host, port=443):
 
         return False
 
+_VERSION_CACHE = ScopedDict("cppm_version_cache")
+_VERSION_TTL_SECONDS = 3600
+
+
+def _extract_version(data):
+    """Build a version string from whatever the API returns."""
+    if isinstance(data, str):
+        return data.strip() or None
+
+    if not isinstance(data, dict):
+        return None
+
+    parts = [
+        data.get("app_major_version"),
+        data.get("app_minor_version"),
+        data.get("app_service_release"),
+    ]
+
+    if all(part not in (None, "") for part in parts):
+        return ".".join(str(part) for part in parts)
+
+    for key, value in data.items():
+        if (
+            "version" in str(key).lower()
+            and isinstance(value, (str, int, float))
+            and str(value).strip()
+        ):
+            return str(value).strip()
+
+    return None
+
+
+def get_cppm_version_string(login):
+    """
+    Return the ClearPass version for the active environment.
+
+    Cached per environment for an hour, because the version only changes
+    on upgrade. Failures never break the health check.
+    """
+    cached = _VERSION_CACHE.get("entry")
+
+    if cached and time.time() - cached["time"] < _VERSION_TTL_SECONDS:
+        return cached["value"]
+
+    try:
+        data = ApiLocalServerConfiguration.get_cppm_version(login)
+    except Exception as exc:
+        logger.warning("ClearPass version lookup failed: %s", exc)
+        return None
+
+    version = _extract_version(data)
+
+    if version is None:
+        logger.warning(
+            "Unable to read ClearPass version. Response fields: %s",
+            list(data) if isinstance(data, dict) else type(data).__name__,
+        )
+        return None
+
+    _VERSION_CACHE["entry"] = {"value": version, "time": time.time()}
+    logger.info("ClearPass version: %s", version)
+
+    return version
 
 def check_clearpass():
     """
@@ -58,7 +124,8 @@ def check_clearpass():
         "response_status": "unknown",
         "service_count": 0,
         "error": None,
-        "server": None
+        "server": None,
+        "version": None
     }
 
     try:
@@ -68,7 +135,7 @@ def check_clearpass():
         # environment configuration.
         # -------------------------------------------------
 
-        server_url = os.getenv(
+        server_url = cp_env.getenv(
             "CLEARPASS_API_URL"
         )
 
@@ -212,6 +279,7 @@ def check_clearpass():
             )
 
         result["connected"] = True
+        result["version"] = get_cppm_version_string(login)
 
     except Exception as exc:
 

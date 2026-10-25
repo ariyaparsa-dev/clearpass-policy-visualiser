@@ -258,21 +258,13 @@ h2 {
 <body>
 
 <nav class="navbar navbar-expand-lg navbar-dark">
-
     <div class="container-fluid">
-
         <span class="navbar-brand">
-
-            <span class="brand-green">
-                ClearPass
-            </span>
-
-            Policy Visualizer
-
+            <span class="brand-green">ClearPass</span>
+            Policy Visualiser
         </span>
-
+        <div class="ms-auto">{% include '_environment_nav.html' %}</div>
     </div>
-
 </nav>
 
 <div class="content-wrapper">
@@ -366,7 +358,7 @@ h2 {
                     </div>
 
                     <div class="info-value">
-                        {{ service.hit_count}}
+                        {{ "n/a" if service.hit_count is none else service.hit_count }}
                     </div>
 
                 </div>

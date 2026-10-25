@@ -1,5 +1,6 @@
 import time
 import logging
+from cp_env import current_state
 
 logger = logging.getLogger(__name__)
 
@@ -89,16 +90,11 @@ from pyclearpass.api_endpointvisibility import ApiEndpointVisibility
 from cp_client import get_login
 
 
-ENDPOINT_CACHE = None
-ATTRIBUTE_CATALOG_CACHE = None
-FINGERPRINT_CACHE = {}
-GUEST_CACHE = None
-
 def build_fingerprint_cache():
 
     cache_start = time.perf_counter()
 
-    global FINGERPRINT_CACHE
+    FINGERPRINT_CACHE = current_state().fingerprint_cache
 
     if FINGERPRINT_CACHE:
         logger.info(
@@ -204,7 +200,7 @@ def get_endpoint_fingerprint(
     mac_address
 ):
 
-    return FINGERPRINT_CACHE.get(
+    return current_state().fingerprint_cache.get(
         normalise_mac(mac_address),
         {}
     )
@@ -220,7 +216,6 @@ def preload_endpoint_data():
     the application startup process.
     """
 
-    global FINGERPRINT_CACHE
 
     from cp_endpoint_sql import (
         build_fingerprint_cache_from_sql
@@ -239,7 +234,7 @@ def preload_endpoint_data():
             build_fingerprint_cache_from_sql()
         )
 
-        FINGERPRINT_CACHE = sql_cache
+        current_state().fingerprint_cache = sql_cache
 
     except Exception:
 
@@ -252,16 +247,15 @@ def preload_endpoint_data():
     logger.info(
         "Endpoint pre-load complete using PostgreSQL: "
         "%s fingerprint entries in %.3fs",
-        len(FINGERPRINT_CACHE),
+        len(sql_cache),
         time.perf_counter() - start
     )
 
 def get_all_endpoints():
 
-    global ENDPOINT_CACHE
-
-    if ENDPOINT_CACHE is not None:
-        return ENDPOINT_CACHE
+    state = current_state()
+    if state.endpoint_cache is not None:
+        return state.endpoint_cache
 
     login = get_login()
 
@@ -334,17 +328,14 @@ def get_all_endpoints():
             "endpoint collection."
         )
 
-
-    ENDPOINT_CACHE = items
-
-    return ENDPOINT_CACHE
+    state.endpoint_cache = items
+    return state.endpoint_cache
 
 def get_all_guests():
 
-    global GUEST_CACHE
-
-    if GUEST_CACHE is not None:
-        return GUEST_CACHE
+    state = current_state()
+    if state.guest_cache is not None:
+        return state.guest_cache
 
     login = get_login()
 
@@ -416,17 +407,14 @@ def get_all_guests():
             "guest collection."
         )
 
-
-    GUEST_CACHE = items
-
-    return GUEST_CACHE
+    state.guest_cache = items
+    return state.guest_cache
 
 def build_attribute_catalog():
 
-    global ATTRIBUTE_CATALOG_CACHE
-
-    if ATTRIBUTE_CATALOG_CACHE is not None:
-        return ATTRIBUTE_CATALOG_CACHE
+    state = current_state()
+    if state.attribute_catalog_cache is not None:
+        return state.attribute_catalog_cache
 
     catalog = {}
 
@@ -467,7 +455,7 @@ def build_attribute_catalog():
             )
         )
 
-    ATTRIBUTE_CATALOG_CACHE = catalog
+    state.attribute_catalog_cache = catalog
 
     return catalog
 
