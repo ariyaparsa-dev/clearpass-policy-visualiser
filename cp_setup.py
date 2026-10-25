@@ -530,22 +530,34 @@ def test_postgresql(config):
 
 
 def _setup_settings(config):
-    """The values Initial Setup writes, in file order."""
+    """
+    The values Initial Setup writes, in file order.
+
+    Only fields present in config are returned. Initial Setup passes all of
+    them; the Environments page validates with a smaller set (no RADIUS
+    fields), and must not fail because of that.
+    """
+
+    fields = [
+        ("CLEARPASS_API_URL", "clearpass_api_url"),
+        ("CLEARPASS_CLIENT_ID", "clearpass_client_id"),
+        ("CLEARPASS_CLIENT_SECRET", "clearpass_client_secret"),
+        ("CLEARPASS_VERIFY_SSL", "clearpass_verify_ssl"),
+        ("RADIUS_SERVER", "radius_server"),
+        ("RADIUS_AUTH_PORT", "radius_port"),
+        ("RADIUS_SECRET", "radius_secret"),
+        ("RADIUS_NAS_IDENTIFIER", "nas_identifier"),
+        ("CP_SQL_HOST", "sql_host"),
+        ("CP_SQL_PORT", "sql_port"),
+        ("CP_SQL_DATABASE", "sql_database"),
+        ("CP_SQL_USERNAME", "sql_username"),
+        ("CP_SQL_PASSWORD", "sql_password"),
+    ]
 
     return [
-        ("CLEARPASS_API_URL", config["clearpass_api_url"]),
-        ("CLEARPASS_CLIENT_ID", config["clearpass_client_id"]),
-        ("CLEARPASS_CLIENT_SECRET", config["clearpass_client_secret"]),
-        ("CLEARPASS_VERIFY_SSL", config["clearpass_verify_ssl"]),
-        ("RADIUS_SERVER", config["radius_server"]),
-        ("RADIUS_AUTH_PORT", config["radius_port"]),
-        ("RADIUS_SECRET", config["radius_secret"]),
-        ("RADIUS_NAS_IDENTIFIER", config["nas_identifier"]),
-        ("CP_SQL_HOST", config["sql_host"]),
-        ("CP_SQL_PORT", config["sql_port"]),
-        ("CP_SQL_DATABASE", config["sql_database"]),
-        ("CP_SQL_USERNAME", config["sql_username"]),
-        ("CP_SQL_PASSWORD", config["sql_password"]),
+        (key, config[name])
+        for key, name in fields
+        if name in config
     ]
 
 
