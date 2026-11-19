@@ -7,6 +7,7 @@ from cp_env_web import init_environment_support
 from dotenv import load_dotenv
 from flask import (
     Flask,
+    abort,
     jsonify,
     redirect,
     render_template,
@@ -222,6 +223,12 @@ def log_request():
 @app.before_request
 def require_initial_setup():
     if is_setup_complete():
+        # Once configured, Initial Setup can no longer be submitted.
+        if (
+            request.endpoint == "setup_provisioning_preview"
+            or (request.endpoint == "setup" and request.method == "POST")
+        ):
+            abort(403)
         return None
 
     allowed_endpoints = {
@@ -235,9 +242,7 @@ def require_initial_setup():
     if request.endpoint in allowed_endpoints:
         return None
 
-    return redirect(
-        url_for("setup")
-    )
+    return redirect(url_for("setup"))
 
 
 def build_provisioning_login(config):
