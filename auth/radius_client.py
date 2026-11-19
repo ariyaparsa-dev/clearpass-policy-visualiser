@@ -497,6 +497,19 @@ def authenticate_radius(username, password):
 
             continue
 
+        except socket.gaierror as exc:
+            logger.error(
+                "RADIUS server %s could not be resolved for user %s (%s). "
+                "Check DNS or use the server's IP address.",
+                radius_server,
+                username,
+                exc,
+            )
+
+            raise RadiusAuthenticationError(
+                f"The RADIUS server {radius_server} could not be resolved."
+            ) from exc
+
         except OSError as exc:
             logger.exception(
                 "RADIUS socket error for user %s.",

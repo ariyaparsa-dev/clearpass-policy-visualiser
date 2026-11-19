@@ -1,5 +1,6 @@
 import logging
 import os
+from urllib.parse import urlparse
 
 from waitress import serve
 
@@ -35,13 +36,22 @@ def initialise_visualiser():
 
     try:
         initialise_cache()
-    except Exception:
+    except Exception as exc:
         import cp_env
 
-        logger.exception(
-            "The initial environment could not be loaded. Starting the "
-            "web server anyway; use Try again once ClearPass is reachable."
+        host = (
+            urlparse(os.getenv("CLEARPASS_API_URL", "")).hostname
+            or "the ClearPass server"
         )
+
+        logger.error(
+            "The initial environment could not be loaded: %s is unreachable "
+            "(%s). Starting the web server anyway; sign in and use Try again "
+            "once it is reachable.",
+            host,
+            type(exc).__name__,
+        )
+        logger.debug("Initial environment load failure.", exc_info=True)
 
         state = cp_env.current_state()
         state.initialised = False
