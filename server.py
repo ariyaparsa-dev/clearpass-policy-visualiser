@@ -20,20 +20,33 @@ def initialise_visualiser():
     Initialise ClearPass Policy Visualiser data when
     configuration is complete.
 
-    Initial Setup must remain available when configuration
-    has not yet been completed.
+    A failure to load the initial environment, for example when its
+    ClearPass cannot be reached, must not stop the web server. The
+    environment is marked as failed, and the dashboard shows Unable to
+    load with Try again.
     """
-
-    if is_setup_complete(
-        log_missing=True
-    ):
-        initialise_cache()
-    else:
+    if not is_setup_complete(log_missing=True):
         logger.warning(
             "Initial setup is incomplete. "
             "Starting the web server without "
             "initialising ClearPass caches."
         )
+        return
+
+    try:
+        initialise_cache()
+    except Exception:
+        import cp_env
+
+        logger.exception(
+            "The initial environment could not be loaded. Starting the "
+            "web server anyway; use Try again once ClearPass is reachable."
+        )
+
+        state = cp_env.current_state()
+        state.initialised = False
+        state.load_status = "error"
+        state.load_error = "StartupFailed"
 
 
 def main():
