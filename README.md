@@ -241,7 +241,7 @@ CPV application roles come from the RADIUS reply attribute `Aruba-User-Role`:
 ### Docker (recommended)
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/ariyaparsa-dev/clearpass-policy-visualiser.git
 cd clearpass-policy-visualiser
 docker compose up --build
 ```
