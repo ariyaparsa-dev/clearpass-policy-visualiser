@@ -1569,9 +1569,15 @@ def impact_analysis_lookup():
         }
     )
 
-@app.route("/refresh-cache")
+@app.route("/refresh-cache", methods=["POST"])
 @login_required
 def refresh_cache():
+    expected = session.get("_csrf", "")
+    sent = request.form.get("csrf_token", "")
+
+    if not expected or not secrets.compare_digest(sent, expected):
+        abort(400)
+
     logger.info(
         "Refreshing ClearPass caches..."
     )
@@ -1686,12 +1692,6 @@ def refresh_cache():
     )
 
     return redirect("/")
-
-
-@app.route("/testservice/<int:id>")
-@login_required
-def testservice(id):
-    return get_service(id)
 
 
 @app.route("/service/<int:id>")

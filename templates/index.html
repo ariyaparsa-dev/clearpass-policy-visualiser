@@ -501,12 +501,15 @@
                 <div style="font-size:0.78rem; color:#9CA3AF; text-align:right; line-height:1.25;">
                     Last Refresh:<br>{{ last_refresh }}
                 </div>
-                <a href="/refresh-cache"
-                   class="btn btn-success"
-                   title="Reload services, policies, profiles and references from ClearPass"
-                   onclick="return confirm('Refresh ClearPass data and caches?')">
-                    Refresh Services
-                </a>
+                <form method="post" action="{{ url_for('refresh_cache') }}" class="d-inline mb-0"
+                    onsubmit="return confirm('Refresh ClearPass data and caches?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-success"
+                            title="Reload services, policies, profiles and references from ClearPass">
+                        Refresh Services
+                    </button>
+                </form>
+
             </div>
 
         </div>
