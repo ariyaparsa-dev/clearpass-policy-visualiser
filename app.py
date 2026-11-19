@@ -76,6 +76,7 @@ from cp_endpoint import (
 
 from cp_enforcement import (
     ENFORCEMENT_POLICY_CACHE,
+    ENFORCEMENT_POLICY_LOOKUP_CACHE,
     PROFILE_CACHE,
     build_profile_reference_cache,
     get_enforcement_details,
@@ -1582,6 +1583,20 @@ def refresh_cache():
         "Refreshing ClearPass caches..."
     )
 
+    # Check ClearPass first. If it cannot be reached, keep the data that is
+    # already loaded instead of clearing it and failing part-way.
+    health = check_clearpass()
+    cp_cache.health_cache = health
+    cp_cache.health_cache_time = time.time()
+
+    if not health.get("connected"):
+        logger.warning(
+            "Refresh skipped: ClearPass is unreachable (%s). The previously "
+            "loaded data is kept.",
+            health.get("error") or "unknown error",
+        )
+        return redirect(url_for("home"))
+
     cp_cache.initialised = False
 
     cp_cache.services_cache = []
@@ -1593,12 +1608,9 @@ def refresh_cache():
     cp_cache.impact_analysis_lookup_cache = []
     cp_cache.unused_objects_cache = None
 
-    cp_cache.health_cache = check_clearpass()
-    cp_cache.health_cache_time = time.time()
-
-
     PROFILE_CACHE.clear()
     ENFORCEMENT_POLICY_CACHE.clear()
+    ENFORCEMENT_POLICY_LOOKUP_CACHE.clear()
     ROLE_MAPPING_CACHE.clear()
     ROLE_CACHE.clear()
 

@@ -356,10 +356,15 @@ def init_environment_support(app, initialise_cache):
 
             try:
                 response = refresh(*args, **kwargs)
-            except Exception:
+            except Exception as exc:
+                state.initialised = False
                 state.load_status = "error"
                 state.load_error = "RefreshFailed"
-                raise
+                logger.error(
+                    "Refresh failed: %s: %s", type(exc).__name__, exc
+                )
+                logger.debug("Refresh failure.", exc_info=True)
+                return redirect(url_for("home"))
 
             state.load_status = "ready"
             return response
