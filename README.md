@@ -342,6 +342,31 @@ clearpass-policy-visualiser
 
 ## Changelog
 
+### v1.7.1
+
+#### Security
+- Initial Setup can no longer be submitted once setup is complete.
+- Refresh Services now requires a POST with a CSRF token.
+- Removed a debug route that returned raw ClearPass Service data.
+
+#### Reliability when ClearPass is unreachable
+- CPV starts even when the initial environment's ClearPass cannot be reached. Other environments stay available, and Try again loads it once it is back.
+- Refresh Services checks ClearPass first, and keeps the loaded data if ClearPass is unreachable.
+- A connection lost during a refresh stops it cleanly instead of building partial data.
+- Pages that need live ClearPass data show a "ClearPass is unreachable" page instead of an error.
+- RADIUS name-resolution failures and unreachable environments are logged as one clear line.
+
+#### Performance
+- The ClearPass API login is reused per environment. 
+- Lighter health check
+- Refresh Services now rereads Enforcement Policies, so policy changes in ClearPass appear after a refresh
+
+#### Dashboard
+- Profiled Endpoints (in CPV) counts only endpoints that ClearPass has profiled. The ClearPass Endpoint Repository also includes endpoints that haven't been profiled yet, so its total may be higher. The count updates when the environment loads, not on Refresh Services
+- An info button next to Last Refresh shows the time each load step took.
+- Larger, consistent info icons.
+
+
 ### v1.7.0
 
 #### Multiple ClearPass environments
