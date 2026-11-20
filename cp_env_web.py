@@ -21,6 +21,7 @@ from flask_login import current_user, login_required
 
 import cp_env
 import cp_environments
+import requests
 from auth import login_manager
 from auth.models import RadiusUser
 
@@ -158,7 +159,25 @@ def _start_load(env_id, initialise_cache):
                 logger.info(
                     "Environment '%s' loaded.", cp_env.display_name(env_id)
                 )
+
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+        ) as exc:
+            # ClearPass unreachable: an expected condition, so one line
+            # without a traceback. Try again retries once it is back.
+            with cp_env.use(env_id):
+                logger.error(
+                    "Environment '%s' could not be loaded: ClearPass is "
+                    "unreachable (%s). Use Try again once it is reachable.",
+                    cp_env.display_name(env_id),
+                    type(exc).__name__,
+                )
+                logger.debug("Environment load failure.", exc_info=True)
+            state.load_error = type(exc).__name__
+            state.load_status = "error"
         except Exception as exc:
+            # Anything else is unexpected, so keep the full traceback.
             with cp_env.use(env_id):
                 logger.exception(
                     "Environment '%s' failed to load.",

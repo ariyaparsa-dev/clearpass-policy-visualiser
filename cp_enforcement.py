@@ -1,5 +1,8 @@
 import logging
 import time
+
+import requests
+
 logger = logging.getLogger(__name__)
 
 from pyclearpass import *
@@ -12,6 +15,7 @@ PROFILE_CACHE = ScopedDict("profile_cache")
 ENFORCEMENT_POLICY_CACHE = ScopedDict("enforcement_policy_cache")
 ENFORCEMENT_POLICY_LOOKUP_CACHE = ScopedDict("enforcement_policy_lookup_cache")
 
+
 def build_qualified_attribute(
     condition_type,
     condition_name
@@ -20,6 +24,7 @@ def build_qualified_attribute(
         return condition_name
 
     return f"{condition_type}:{condition_name}"
+
 
 def get_enforcement_policy(policy_name):
 
@@ -48,7 +53,6 @@ def get_enforcement_policy(policy_name):
 def get_enforcement_profile(profile_name):
 
     if profile_name in PROFILE_CACHE:
-
         return PROFILE_CACHE[
             profile_name
         ]
@@ -69,6 +73,7 @@ def get_enforcement_profile(profile_name):
 
     return profile
 
+
 def get_all_enforcement_profiles():
     """
     Retrieve all Enforcement Profiles from ClearPass.
@@ -80,7 +85,6 @@ def get_all_enforcement_profiles():
     login = get_login()
 
     profiles = []
-
     offset = 0
     page_size = 100
     total_count = None
@@ -101,13 +105,11 @@ def get_all_enforcement_profiles():
             response,
             dict,
         ):
-
             logger.warning(
                 "Unexpected Enforcement Profile collection "
                 "response type: %s",
                 type(response).__name__,
             )
-
             break
 
         embedded = response.get(
@@ -119,12 +121,10 @@ def get_all_enforcement_profiles():
             embedded,
             dict,
         ):
-
             logger.warning(
                 "Enforcement Profile collection response "
                 "did not contain an _embedded dictionary."
             )
-
             break
 
         items = embedded.get(
@@ -136,12 +136,10 @@ def get_all_enforcement_profiles():
             items,
             list,
         ):
-
             logger.warning(
                 "Enforcement Profile collection response "
                 "did not contain an items list."
             )
-
             break
 
         if total_count is None:
@@ -151,16 +149,13 @@ def get_all_enforcement_profiles():
             )
 
             try:
-
                 total_count = int(
                     count_value
                 )
-
             except (
                 TypeError,
                 ValueError,
             ):
-
                 total_count = None
 
         profiles.extend(
@@ -179,13 +174,11 @@ def get_all_enforcement_profiles():
             and
             offset >= total_count
         ):
-
             break
 
         if len(
             items
         ) < page_size:
-
             break
 
     logger.info(
@@ -219,7 +212,6 @@ def get_all_enforcement_policies():
     login = get_login()
 
     policies = []
-
     offset = 0
     page_size = 100
     total_count = None
@@ -240,13 +232,11 @@ def get_all_enforcement_policies():
             response,
             dict,
         ):
-
             logger.warning(
                 "Unexpected Enforcement Policy collection "
                 "response type: %s",
                 type(response).__name__,
             )
-
             break
 
         embedded = response.get(
@@ -258,12 +248,10 @@ def get_all_enforcement_policies():
             embedded,
             dict,
         ):
-
             logger.warning(
                 "Enforcement Policy collection response "
                 "did not contain an _embedded dictionary."
             )
-
             break
 
         items = embedded.get(
@@ -275,12 +263,10 @@ def get_all_enforcement_policies():
             items,
             list,
         ):
-
             logger.warning(
                 "Enforcement Policy collection response "
                 "did not contain an items list."
             )
-
             break
 
         if total_count is None:
@@ -290,16 +276,13 @@ def get_all_enforcement_policies():
             )
 
             try:
-
                 total_count = int(
                     count_value
                 )
-
             except (
                 TypeError,
                 ValueError,
             ):
-
                 total_count = None
 
         policies.extend(
@@ -318,13 +301,11 @@ def get_all_enforcement_policies():
             and
             offset >= total_count
         ):
-
             break
 
         if len(
             items
         ) < page_size:
-
             break
 
     logger.info(
@@ -348,6 +329,11 @@ def build_profile_reference_cache():
 
     Pass 2 attaches Services to the Enforcement Policies
     used by those Services.
+
+    A lost connection to ClearPass stops the build, so a
+    refresh never produces a partial reference cache. A
+    single policy that cannot be read for any other reason
+    is logged and skipped.
     """
 
     from cp_services import get_all_services
@@ -355,7 +341,6 @@ def build_profile_reference_cache():
     cache_start = time.perf_counter()
 
     references = {}
-
     policies_by_name = {}
 
     services = get_all_services()
@@ -363,7 +348,6 @@ def build_profile_reference_cache():
     policy_summaries = (
         get_all_enforcement_policies()
     )
-
 
     def ensure_profile_reference(
         profile_name,
@@ -387,7 +371,6 @@ def build_profile_reference_cache():
         return references[
             profile_name
         ]
-
 
     def ensure_policy_reference(
         profile_name,
@@ -447,7 +430,6 @@ def build_profile_reference_cache():
                 )
                 is None
             ):
-
                 existing_policy[
                     "id"
                 ] = policy.get(
@@ -459,7 +441,6 @@ def build_profile_reference_cache():
                     "description"
                 )
             ):
-
                 existing_policy[
                     "description"
                 ] = policy.get(
@@ -467,7 +448,6 @@ def build_profile_reference_cache():
                 )
 
         return existing_policy
-
 
     def get_policy_profile_names(
         policy,
@@ -501,7 +481,6 @@ def build_profile_reference_cache():
                 rule,
                 dict,
             ):
-
                 continue
 
             for profile_name in rule.get(
@@ -515,13 +494,11 @@ def build_profile_reference_cache():
                     profile_name
                     not in profile_names
                 ):
-
                     profile_names.append(
                         profile_name
                     )
 
         return profile_names
-
 
     # -------------------------------------------------
     # Pass 1
@@ -538,7 +515,6 @@ def build_profile_reference_cache():
             policy_summary,
             dict,
         ):
-
             continue
 
         policy_name = policy_summary.get(
@@ -554,6 +530,11 @@ def build_profile_reference_cache():
                 policy_name
             )
 
+        except requests.exceptions.ConnectionError:
+            # ClearPass is unreachable: every later call would
+            # fail too, so stop instead of building partial data.
+            raise
+
         except Exception:
 
             logger.exception(
@@ -568,7 +549,6 @@ def build_profile_reference_cache():
             policy,
             dict,
         ):
-
             continue
 
         policies_by_name[
@@ -586,7 +566,6 @@ def build_profile_reference_cache():
                 policy,
             )
 
-
     # -------------------------------------------------
     # Pass 2
     #
@@ -602,7 +581,6 @@ def build_profile_reference_cache():
             service,
             dict,
         ):
-
             continue
 
         service_name = service.get(
@@ -613,7 +591,6 @@ def build_profile_reference_cache():
         if service_name.startswith(
             "--------"
         ):
-
             continue
 
         policy_name = service.get(
@@ -639,6 +616,10 @@ def build_profile_reference_cache():
                     policy_name
                 )
 
+            except requests.exceptions.ConnectionError:
+                # ClearPass is unreachable: stop the build.
+                raise
+
             except Exception:
 
                 logger.exception(
@@ -654,7 +635,6 @@ def build_profile_reference_cache():
                 policy,
                 dict,
             ):
-
                 continue
 
             policies_by_name[
@@ -709,7 +689,6 @@ def build_profile_reference_cache():
                 service_name
             ] = service_reference
 
-
     logger.info(
         "Enforcement profile reference cache built: "
         "%s profiles, %s total policies, "
@@ -728,11 +707,8 @@ def build_profile_reference_cache():
         cache_start,
     )
 
-
     return {
-
         profile_name: {
-
             "policies": sorted(
                 [
                     {
@@ -771,7 +747,6 @@ def build_profile_reference_cache():
                     )
                 ),
             ),
-
             "services": sorted(
                 list(
                     profile_data[
@@ -785,26 +760,22 @@ def build_profile_reference_cache():
                     )
                 ),
             ),
-
         }
-
         for profile_name, profile_data
         in references.items()
-
     }
 
-def get_enforcement_details(policy_name):
-    if policy_name in ENFORCEMENT_POLICY_CACHE:
 
+def get_enforcement_details(policy_name):
+
+    if policy_name in ENFORCEMENT_POLICY_CACHE:
         return ENFORCEMENT_POLICY_CACHE[
             policy_name
         ]
 
-
     policy = get_enforcement_policy(
         policy_name
     )
-
 
     result = {
         "id": policy.get(
@@ -814,31 +785,28 @@ def get_enforcement_details(policy_name):
         "description": policy.get(
             "description"
         ),
-
         "default_enforcement_profile":
             policy.get(
                 "default_enforcement_profile"
             ),
-
         "rule_eval_algo":
             policy.get(
                 "rule_eval_algo"
             ),
-
         "rules": []
     }
 
     for rule in policy.get("rules", []):
-   
+
         condition_text = "Unknown"
+        condition_attributes = []
 
         if rule.get("condition"):
 
             conditions = []
-            condition_attributes = []
 
             for c in rule.get("condition", []):
-           
+
                 value = c.get("value", "")
 
                 if value == "&nbsp;":
@@ -891,7 +859,6 @@ def get_enforcement_details(policy_name):
                 )
 
                 if value:
-
                     condition += (
                         f" {value}"
                     )
@@ -902,7 +869,7 @@ def get_enforcement_details(policy_name):
                     condition_oper,
                     value
                 )
-                        
+
                 condition_attributes.append(
                     {
                         "source_type": condition_type,
@@ -916,13 +883,12 @@ def get_enforcement_details(policy_name):
                 conditions.append(
                     condition
                 )
-          
+
             condition_text = (
                 "\nAND\n".join(
                     conditions
                 )
             )
-
 
         rule_data = {
             "condition": condition_text,
@@ -930,7 +896,6 @@ def get_enforcement_details(policy_name):
             "attributes": condition_attributes,
             "profiles": []
         }
-
 
         for profile_name in rule.get(
             "enforcement_profile_names",
@@ -947,12 +912,9 @@ def get_enforcement_details(policy_name):
                         profile_name
                     )
 
-
-
                 profile = PROFILE_CACHE[
                     profile_name
                 ]
-
 
                 rule_data["profiles"].append(
                     {
@@ -961,7 +923,6 @@ def get_enforcement_details(policy_name):
                             profile.get("id"),
                         "description":
                             profile.get("description"),
-
                         "action": profile.get(
                             "action"
                         ),
@@ -994,4 +955,3 @@ def get_enforcement_details(policy_name):
     ] = result
 
     return result
-

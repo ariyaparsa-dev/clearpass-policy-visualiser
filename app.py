@@ -3,6 +3,9 @@ import os
 import secrets
 import time
 from datetime import timedelta
+from urllib.parse import urlparse
+
+import requests
 from cp_env_web import init_environment_support 
 from dotenv import load_dotenv
 from flask import (
@@ -11,6 +14,7 @@ from flask import (
     jsonify,
     redirect,
     render_template,
+    render_template_string,
     request,
     session,
     url_for,
@@ -60,6 +64,7 @@ from cp_role_references import (
 )
 
 import cp_cache
+import cp_env
 
 load_dotenv(
     get_visualiser_env_file(),
@@ -194,6 +199,73 @@ limiter = Limiter(
 limiter.limit("10 per minute")(
     app.view_functions["auth.login"]
 )
+
+
+# -------------------------------------------------
+# ClearPass unreachable
+#
+# Pages such as Visualise and Impact Analysis fetch live
+# ClearPass data. When ClearPass cannot be reached, show a
+# short page and log one line instead of a 500 error and a
+# full traceback.
+# -------------------------------------------------
+
+_UNREACHABLE_PAGE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ClearPass unreachable - ClearPass Policy Visualiser</title>
+<style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+background:#0f172a;color:#e2e8f0;font-family:Arial,Helvetica,sans-serif}
+.panel{width:min(480px,92%);padding:32px;background:#1e293b;border:1px solid #475569;
+border-radius:12px;text-align:center}
+.icon{width:48px;height:48px;margin:0 auto 18px;border-radius:50%;display:flex;
+align-items:center;justify-content:center;background:#450a0a;border:1px solid #991b1b;
+color:#ef4444;font-size:26px;font-weight:700}
+h2{margin:0 0 10px;font-size:22px}
+p{margin:0;color:#cbd5e1;font-size:14px;line-height:1.6}
+a{display:inline-block;margin-top:22px;padding:10px 20px;border-radius:6px;
+background:#01A982;color:#001b14;font-weight:700;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="panel">
+<div class="icon">!</div>
+<h2>ClearPass is unreachable</h2>
+<p>{{ host }} could not be reached, so this page could not be loaded.
+The dashboard still shows the data loaded earlier.</p>
+<a href="{{ url_for('home') }}">Back to dashboard</a>
+</div>
+</body>
+</html>
+"""
+
+
+@app.errorhandler(requests.exceptions.ConnectionError)
+@app.errorhandler(requests.exceptions.Timeout)
+def clearpass_unreachable(exc):
+    """
+    A page that needs live ClearPass data was opened while ClearPass
+    could not be reached.
+    """
+    host = (
+        urlparse(cp_env.getenv("CLEARPASS_API_URL", "") or "").hostname
+        or "The ClearPass server"
+    )
+
+    logger.error(
+        "ClearPass unreachable while opening %s %s (%s: %s).",
+        request.method,
+        request.path,
+        host,
+        type(exc).__name__,
+    )
+
+    if request.path.startswith("/api/"):
+        return jsonify({"error": f"{host} is unreachable."}), 503
+
+    return render_template_string(_UNREACHABLE_PAGE, host=host), 503
 
 
 @app.context_processor
@@ -2319,6 +2391,10 @@ def object_profile(name):
             name
         )
 
+    except requests.exceptions.ConnectionError:
+        # Handled by clearpass_unreachable.
+        raise
+
     except Exception:
 
         logger.exception(
@@ -2365,6 +2441,10 @@ def enforcement_profile_impact_analysis(
         profile = get_enforcement_profile(
             name
         )
+
+    except requests.exceptions.ConnectionError:
+        # Handled by clearpass_unreachable.
+        raise
 
     except Exception:
 
@@ -2473,6 +2553,10 @@ def enforcement_policy_impact_analysis(
         policy = get_enforcement_details(
             name
         )
+
+    except requests.exceptions.ConnectionError:
+        # Handled by clearpass_unreachable.
+        raise
 
     except Exception:
 
@@ -2613,6 +2697,10 @@ def role_mapping_policy_impact_analysis(
         policy = get_role_mapping_details(
             name
         )
+
+    except requests.exceptions.ConnectionError:
+        # Handled by clearpass_unreachable.
+        raise
 
     except Exception:
 

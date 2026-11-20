@@ -201,7 +201,7 @@ def check_clearpass():
             ApiPolicyElements
             .get_config_service(
                 login,
-                limit=1000
+                limit=1
             )
         )
 

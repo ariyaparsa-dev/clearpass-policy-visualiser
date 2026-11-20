@@ -12,6 +12,7 @@ import time
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+import requests
 from pyclearpass import ApiPolicyElements
 from pyclearpass.api_globalserverconfiguration import (
     ApiGlobalServerConfiguration,
@@ -28,13 +29,13 @@ from cp_role_mapping import (
 )
 from cp_services import get_all_services
 
-
 logger = logging.getLogger(__name__)
 
 
 def _normalise_text(value: Any) -> str:
     if value is None:
         return ""
+
     return str(value).strip()
 
 
@@ -68,6 +69,7 @@ def _condition_role_values(
         return []
 
     value_as_list = condition.get("valueAsList")
+
     if value_as_list:
         return _value_as_list(value_as_list)
 
@@ -79,6 +81,7 @@ def _ensure_role_reference(
     role_name: str,
 ) -> dict[str, Any] | None:
     role_name = _normalise_text(role_name)
+
     if not role_name:
         return None
 
@@ -99,6 +102,7 @@ def _ensure_policy_reference(
     policy: Mapping[str, Any],
 ) -> dict[str, Any] | None:
     policy_name = _normalise_text(policy.get("name"))
+
     if not policy_name:
         return None
 
@@ -132,6 +136,7 @@ def _condition_summary(
     condition: Mapping[str, Any],
 ) -> dict[str, str]:
     value = condition.get("value_disp_name")
+
     if not value or value == "&nbsp;":
         value = condition.get("value")
 
@@ -164,12 +169,14 @@ def _attach_service(
     service: Mapping[str, Any],
 ) -> None:
     role_reference = references.get(role_name)
+
     if not role_reference:
         return
 
     policy_reference = role_reference[
         collection_name
     ].get(policy_name)
+
     if not policy_reference:
         return
 
@@ -186,6 +193,7 @@ def _attach_service(
 
 def _get_guest_role_id_map() -> dict[str, str]:
     login = get_login()
+
     result = (
         ApiPolicyElements
         .get_role_mapping_name_by_name(
@@ -206,6 +214,7 @@ def _get_guest_role_id_map() -> dict[str, str]:
         role_name = _normalise_text(
             rule.get("role_name")
         )
+
         if not role_name:
             continue
 
@@ -222,6 +231,7 @@ def _get_guest_role_id_map() -> dict[str, str]:
                 role_id = _normalise_text(
                     condition.get("value")
                 )
+
                 if role_id:
                     role_id_map[role_id] = role_name
 
@@ -232,6 +242,7 @@ def _attach_operator_profile_references(
     references: dict[str, dict[str, Any]],
 ) -> None:
     login = get_login()
+
     result = (
         ApiGlobalServerConfiguration
         .get_operator_profile(
@@ -244,10 +255,12 @@ def _attach_operator_profile_references(
         return
 
     embedded = result.get("_embedded", {})
+
     if not isinstance(embedded, Mapping):
         return
 
     operator_profiles = embedded.get("items", [])
+
     if not isinstance(operator_profiles, list):
         return
 
@@ -270,6 +283,7 @@ def _attach_operator_profile_references(
             profile.get("user_dbs_list", "")
         ).split(","):
             item = item.strip()
+
             if not item:
                 continue
 
@@ -278,7 +292,9 @@ def _attach_operator_profile_references(
                 if ":" in item
                 else item
             )
+
             role_name = guest_role_id_map.get(role_id)
+
             if not role_name:
                 continue
 
@@ -286,6 +302,7 @@ def _attach_operator_profile_references(
                 references,
                 role_name,
             )
+
             if role_reference is None:
                 continue
 
@@ -306,6 +323,7 @@ def _serialise_policy_references(
 
     for policy in policies.values():
         result = dict(policy)
+
         result["reference_types"] = sorted(
             set(result.get("reference_types", []))
         )
@@ -318,6 +336,7 @@ def _serialise_policy_references(
                 service.get("name")
             ).casefold(),
         )
+
         results.append(result)
 
     return sorted(
@@ -337,8 +356,15 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
     default Roles, Tips:Role conditions, Enforcement Policy
     Tips:Role conditions, associated Services, and enabled
     Operator Profile references.
+
+    A lost connection to ClearPass stops the build, so a
+    refresh never produces a partial reference cache. A
+    single policy that cannot be read for any other reason
+    is logged and skipped.
     """
+
     cache_start = time.perf_counter()
+
     references: dict[str, dict[str, Any]] = {}
 
     services = get_all_services()
@@ -347,6 +373,7 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
         str,
         Mapping[str, Any],
     ] = {}
+
     enforcement_policies_by_name: dict[
         str,
         Mapping[str, Any],
@@ -359,11 +386,16 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
         policy_name = _normalise_text(
             policy_summary.get("name")
         )
+
         if not policy_name:
             continue
 
         try:
             policy = get_role_mapping_policy(policy_name)
+        except requests.exceptions.ConnectionError:
+            # ClearPass is unreachable: every later call would
+            # fail too, so stop instead of building partial data.
+            raise
         except Exception:
             logger.exception(
                 "Unable to retrieve Role Mapping Policy "
@@ -380,17 +412,20 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
         default_role = _normalise_text(
             policy.get("default_role_name")
         )
+
         if default_role:
             role_reference = _ensure_role_reference(
                 references,
                 default_role,
             )
+
             if role_reference is not None:
                 policy_reference = _ensure_policy_reference(
                     role_reference,
                     "role_mapping_policies",
                     policy,
                 )
+
                 if policy_reference is not None:
                     _append_unique(
                         policy_reference["reference_types"],
@@ -407,11 +442,13 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
             assigned_role = _normalise_text(
                 rule.get("role_name")
             )
+
             if assigned_role:
                 role_reference = _ensure_role_reference(
                     references,
                     assigned_role,
                 )
+
                 if role_reference is not None:
                     policy_reference = (
                         _ensure_policy_reference(
@@ -420,6 +457,7 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
                             policy,
                         )
                     )
+
                     if policy_reference is not None:
                         _append_unique(
                             policy_reference[
@@ -443,6 +481,7 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
                         references,
                         role_name,
                     )
+
                     if role_reference is None:
                         continue
 
@@ -451,6 +490,7 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
                         "role_mapping_policies",
                         policy,
                     )
+
                     if policy_reference is None:
                         continue
 
@@ -462,9 +502,11 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
                         policy_reference["rule_numbers"],
                         rule_number,
                     )
+
                     condition_data = _condition_summary(
                         condition
                     )
+
                     if (
                         condition_data
                         not in policy_reference["conditions"]
@@ -480,11 +522,15 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
         policy_name = _normalise_text(
             policy_summary.get("name")
         )
+
         if not policy_name:
             continue
 
         try:
             policy = get_enforcement_policy(policy_name)
+        except requests.exceptions.ConnectionError:
+            # ClearPass is unreachable: stop the build.
+            raise
         except Exception:
             logger.exception(
                 "Unable to retrieve Enforcement Policy "
@@ -516,6 +562,7 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
                         references,
                         role_name,
                     )
+
                     if role_reference is None:
                         continue
 
@@ -524,6 +571,7 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
                         "enforcement_policies",
                         policy,
                     )
+
                     if policy_reference is None:
                         continue
 
@@ -535,9 +583,11 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
                         policy_reference["rule_numbers"],
                         rule_number,
                     )
+
                     condition_data = _condition_summary(
                         condition
                     )
+
                     if (
                         condition_data
                         not in policy_reference["conditions"]
@@ -553,12 +603,14 @@ def build_role_reference_cache() -> dict[str, dict[str, Any]]:
         service_name = _normalise_text(
             service.get("name")
         )
+
         if service_name.startswith("--------"):
             continue
 
         role_mapping_policy_name = _normalise_text(
             service.get("role_mapping_policy")
         )
+
         enforcement_policy_name = _normalise_text(
             service.get("enf_policy")
         )
