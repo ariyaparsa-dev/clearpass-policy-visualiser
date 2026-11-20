@@ -93,10 +93,15 @@
 
         .health-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: 2fr repeat(5, 1fr);
             gap: 15px;
         }
-
+        @media (max-width: 1200px) {
+            .health-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    
         .health-item {
             display: flex;
             align-items: center;
@@ -254,16 +259,31 @@
             background-color: #01A982;
             color: #001B14;
         }
+        
 
         .hit-count-info {
-            display: inline-block;
-            margin-left: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            margin-left: 6px;
             margin-right: 2px;
-            color: #00c9a7;
-            font-size: 0.9em;
-            font-weight: 600;
+            border: 1.5px solid #9CA3AF;
+            border-radius: 50%;
+            font-family: Georgia, "Times New Roman", serif;
+            font-style: italic;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1;
+            color: #E2E8F0;
             cursor: help;
-            vertical-align: baseline;
+            vertical-align: middle;
+        }
+
+        .hit-count-info:hover {
+            border-color: #01A982;
+            color: #01A982;
         }
                 
 	table {
@@ -419,6 +439,37 @@
         }
     }
 
+    .timing-info { position: relative; display: inline-flex; align-items: center;
+            justify-content: center; width: 22px; height: 22px; margin-left: 6px;
+            border: 1.5px solid #9CA3AF; border-radius: 50%;
+            font-family: Georgia, "Times New Roman", serif; font-style: italic;
+            font-size: 15px; font-weight: 700; line-height: 1;
+            cursor: help; color: #E2E8F0; vertical-align: middle; }
+
+    .timing-info:hover, .timing-info:focus { border-color: #01A982; color: #01A982; outline: none; }
+            
+    .timing-info .timing-panel { display: none; position: absolute; right: 0; top: 130%;
+            z-index: 2000; min-width: 320px; padding: 12px 14px; background: #111827;
+            border: 1px solid #475569; border-radius: 8px; box-shadow: 0 12px 30px rgba(0,0,0,.4);
+            text-align: left; color: #E2E8F0; font-size: 0.8rem; line-height: 1.5; white-space: nowrap; }
+    .timing-info:hover .timing-panel, .timing-info:focus .timing-panel { display: block; }
+    .timing-panel table { width: 100%; border-collapse: collapse; }
+    .timing-panel td { padding: 2px 0; }
+    .timing-panel td.num { text-align: right; padding-left: 16px; color: #01A982; }
+    .timing-panel .muted { color: #9CA3AF; }
+    .timing-panel .total td { border-top: 1px solid #334155; padding-top: 6px; font-weight: 700; }
+
+    .timing-info .timing-panel {
+        font-family: inherit;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        font-style: normal;
+        font-weight: 400;
+        font-size: 0.8rem;
+    }
+    .timing-info .timing-panel strong,
+    .timing-info .timing-panel .total td {
+        font-weight: 700;
+    }
 
     </style>
 </head>
@@ -499,7 +550,31 @@
 
             <div class="d-flex align-items-center gap-3">
                 <div style="font-size:0.78rem; color:#9CA3AF; text-align:right; line-height:1.25;">
-                    Last Refresh:<br>{{ last_refresh }}
+
+                    Last Refresh:
+                    {% if load_timings %}
+                    <span class="timing-info" tabindex="0" aria-label="Load timings">i
+                        <span class="timing-panel">
+                            <strong>{{ load_timings.kind }}</strong>
+                            <span class="muted">· finished {{ load_timings.finished }}</span>
+                            <table>
+                                {% for step in load_timings.steps %}
+                                <tr>
+                                    <td>{{ step.label }}{% if step.detail %}
+                                        <span class="muted">({{ step.detail }})</span>{% endif %}</td>
+                                    <td class="num">{{ "%.1f"|format(step.seconds) }} s</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="total">
+                                    <td>Total</td>
+                                    <td class="num">{{ "%.1f"|format(load_timings.total) }} s</td>
+                                </tr>
+                            </table>
+                        </span>
+                    </span>
+                    {% endif %}
+                    <br>{{ last_refresh }}
+                    
                 </div>
                 <form method="post" action="{{ url_for('refresh_cache') }}" class="d-inline mb-0"
                     onsubmit="return confirm('Refresh ClearPass data and caches?')">
@@ -792,6 +867,11 @@
         </span>
     </div>
 
+        <div class="health-item">
+        <strong>Profiled Endpoints</strong>
+        <span style="color:#E2E8F0;">{{ "{:,}".format(stats.endpoint_count) }}</span>
+    </div>
+
     <div class="health-item">
         <strong>API Authentication</strong>
 
@@ -934,7 +1014,7 @@
                             title="Current-hour Service matches. Counts reset at the start of each hour and update when Services are refreshed."
                             aria-label="Current-hour Service matches. Counts reset at the start of each hour and update when Services are refreshed."
                             onclick="event.stopPropagation();"
-                        >ⓘ</span>
+                        >i</span>
                         <span id="hitCountSortIndicator"> ↕</span>
                     </th>
 

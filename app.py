@@ -23,6 +23,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import current_user, login_required
 from pyclearpass import ClearPassAPILogin
+from contextlib import contextmanager
 
 from auth import login_manager
 from auth.routes import auth_bp
@@ -1348,6 +1349,9 @@ def home():
 
         "top_hits": top_hits,
         "least_hits": least_hits,
+        "endpoint_count": len(
+            cp_env.current_state().fingerprint_cache or {}
+        ),
 
         "tacacs_services": len(
             [
@@ -1407,6 +1411,7 @@ def home():
         stats=stats,
         unused=unused,
         last_refresh=cp_cache.last_refresh,
+        load_timings=getattr(cp_env.current_state(), "load_timings", None),
         version=VERSION,
     )
 
@@ -1644,6 +1649,7 @@ def impact_analysis_lookup():
 
 @app.route("/refresh-cache", methods=["POST"])
 @login_required
+
 def refresh_cache():
     expected = session.get("_csrf", "")
     sent = request.form.get("csrf_token", "")
@@ -1651,15 +1657,15 @@ def refresh_cache():
     if not expected or not secrets.compare_digest(sent, expected):
         abort(400)
 
-    logger.info(
-        "Refreshing ClearPass caches..."
-    )
+    logger.info("Refreshing ClearPass caches...")
+    _begin_timings("Refresh")
 
     # Check ClearPass first. If it cannot be reached, keep the data that is
     # already loaded instead of clearing it and failing part-way.
-    health = check_clearpass()
-    cp_cache.health_cache = health
-    cp_cache.health_cache_time = time.time()
+    with _timed("Health check"):
+        health = check_clearpass()
+        cp_cache.health_cache = health
+        cp_cache.health_cache_time = time.time()
 
     if not health.get("connected"):
         logger.warning(
@@ -1686,94 +1692,96 @@ def refresh_cache():
     ROLE_MAPPING_CACHE.clear()
     ROLE_CACHE.clear()
 
-    cp_cache.services_cache = get_all_services_with_hit_counts()
-    cp_cache.services_cache = sorted(
-        cp_cache.services_cache,
-        key=lambda service: service["order_no"],
-    )
+    with _timed("Services and Hit Counts") as step:
+        cp_cache.services_cache = sorted(
+            get_all_services_with_hit_counts(),
+            key=lambda service: service["order_no"],
+        )
+        step["detail"] = f"{len(cp_cache.services_cache)} Services"
 
-    logger.info(
-        "Building Role Cache..."
-    )
+    logger.info("Building Role Cache...")
 
-    role_cache = build_role_cache()
-    ROLE_CACHE.update(role_cache)
-    cp_cache.role_cache = ROLE_CACHE
+    with _timed("Roles") as step:
+        ROLE_CACHE.update(build_role_cache())
+        cp_cache.role_cache = ROLE_CACHE
+        step["detail"] = f"{len(ROLE_CACHE)} Roles"
 
     logger.info(
         "Roles cached: %s",
         len(cp_cache.role_cache),
     )
 
-    cp_cache.profile_reference_cache = (
-        build_profile_reference_cache()
-    )
+    with _timed("Enforcement Profile references") as step:
+        cp_cache.profile_reference_cache = (
+            build_profile_reference_cache()
+        )
+        step["detail"] = (
+            f"{len(cp_cache.profile_reference_cache)} profiles"
+        )
 
-    logger.info(
-        "Building Role Mapping Reference Cache..."
-    )
+    logger.info("Building Role Mapping Reference Cache...")
 
-    cp_cache.role_mapping_reference_cache = (
-        build_role_mapping_reference_cache()
-    )
+    with _timed("Role Mapping references") as step:
+        cp_cache.role_mapping_reference_cache = (
+            build_role_mapping_reference_cache()
+        )
+        step["detail"] = (
+            f"{len(cp_cache.role_mapping_reference_cache)} policies"
+        )
 
     logger.info(
         "Built role mapping cache for %s Role Mapping Policies",
         len(cp_cache.role_mapping_reference_cache),
     )
-
     logger.info(
         "Built reference cache for %s Enforcement Profiles",
         len(cp_cache.profile_reference_cache),
     )
 
-    logger.info(
-        "Building Role Reference Cache..."
-    )
+    logger.info("Building Role Reference Cache...")
 
-    cp_cache.role_reference_cache = (
-        build_role_reference_cache()
-    )
+    with _timed("Role references") as step:
+        cp_cache.role_reference_cache = (
+            build_role_reference_cache()
+        )
+        step["detail"] = (
+            f"{len(cp_cache.role_reference_cache)} Roles"
+        )
 
     logger.info(
         "Role references cached: %s",
-        len(
-            cp_cache.role_reference_cache
-        ),
+        len(cp_cache.role_reference_cache),
     )
 
-    logger.info(
-        "Building Unused Objects Cache..."
-    )
+    logger.info("Building Unused Objects Cache...")
 
-    cp_cache.unused_objects_cache = (
-        get_unused_object_summary()
-    )
+    with _timed("Unused Objects"):
+        cp_cache.unused_objects_cache = (
+            get_unused_object_summary()
+        )
 
-    logger.info(
-        "Building Impact Analysis Lookup Cache..."
-    )
+    logger.info("Building Impact Analysis Lookup Cache...")
 
-    cp_cache.impact_analysis_lookup_cache = (
-        build_impact_analysis_lookup_cache()
-    )
+    with _timed("Impact Analysis lookup") as step:
+        cp_cache.impact_analysis_lookup_cache = (
+            build_impact_analysis_lookup_cache()
+        )
+        step["detail"] = (
+            f"{len(cp_cache.impact_analysis_lookup_cache)} objects"
+        )
 
     logger.info(
         "Impact Analysis lookup objects cached: %s",
-        len(
-            cp_cache.impact_analysis_lookup_cache
-        ),
+        len(cp_cache.impact_analysis_lookup_cache),
     )
 
     cp_cache.initialised = True
-
     cp_cache.last_refresh = time.strftime(
         "%d-%m-%Y %H:%M:%S"
     )
+    _finish_timings()
 
-    logger.info(
-        "Cache refresh complete."
-    )
+    logger.info("Cache refresh complete.")
 
     return redirect("/")
 
@@ -1808,6 +1816,58 @@ def service(id):
         graph=graph,
     )
 
+# -------------------------------------------------
+# Load timings
+#
+# Each step of a load is timed. The timings of the last
+# load that completed are kept on the environment's state
+# and shown in the dashboard's Last Refresh panel. A load
+# that fails keeps the previous timings.
+# -------------------------------------------------
+
+def _begin_timings(kind):
+    """Start recording step timings for a load of the active environment."""
+    cp_env.current_state().pending_timings = {
+        "kind": kind,
+        "started": time.perf_counter(),
+        "steps": [],
+    }
+
+
+@contextmanager
+def _timed(label):
+    """Time one load step. The caller may set step["detail"]."""
+    step = {"label": label, "detail": ""}
+    start = time.perf_counter()
+
+    try:
+        yield step
+    finally:
+        step["seconds"] = time.perf_counter() - start
+        pending = getattr(cp_env.current_state(), "pending_timings", None)
+
+        if pending is not None:
+            pending["steps"].append(step)
+
+
+def _finish_timings():
+    """Keep the timings of a load that completed."""
+    state = cp_env.current_state()
+    pending = getattr(state, "pending_timings", None)
+
+    if pending is None:
+        return
+
+    pending["total"] = time.perf_counter() - pending.pop("started")
+    pending["finished"] = time.strftime("%d-%m-%Y %H:%M:%S")
+    state.load_timings = pending
+    state.pending_timings = None
+
+    logger.info(
+        "%s completed in %.1fs.",
+        pending["kind"],
+        pending["total"],
+    )
 
 def initialise_cache():
     cp_cache.last_refresh = time.strftime(
@@ -1828,139 +1888,132 @@ def initialise_cache():
         return
 
     cp_cache.initialised = False
+    _begin_timings("Full load")
 
-    logger.info(
-        "Loading ClearPass services..."
-    )
+    logger.info("Loading ClearPass services...")
 
-    cp_cache.services_cache = get_all_services_with_hit_counts()
-    cp_cache.services_cache = sorted(
-        cp_cache.services_cache,
-        key=lambda service: service["order_no"],
-    )
+    with _timed("Services and Hit Counts") as step:
+        cp_cache.services_cache = sorted(
+            get_all_services_with_hit_counts(),
+            key=lambda service: service["order_no"],
+        )
+        step["detail"] = f"{len(cp_cache.services_cache)} Services"
 
     logger.info(
         "Services cached: %s",
         len(cp_cache.services_cache),
     )
 
-    logger.info(
-        "Running initial health check..."
-    )
+    logger.info("Running initial health check...")
 
-    cp_cache.health_cache = check_clearpass()
-    cp_cache.health_cache_time = time.time()
+    with _timed("Health check"):
+        cp_cache.health_cache = check_clearpass()
+        cp_cache.health_cache_time = time.time()
 
-    logger.info(
-        "Pre-loading endpoint data..."
-    )
+    logger.info("Pre-loading endpoint data...")
 
-    preload_endpoint_data()
+    with _timed("Profiled endpoints") as step:
+        preload_endpoint_data()
+        step["detail"] = (
+            f"{len(cp_env.current_state().fingerprint_cache or {}):,} "
+            "endpoints"
+        )
 
-    logger.info(
-        "Building Role Cache..."
-    )
+    logger.info("Building Role Cache...")
 
-    role_cache = build_role_cache()
-
-    ROLE_CACHE.clear()
-    ROLE_CACHE.update(role_cache)
-
-    cp_cache.role_cache = ROLE_CACHE
+    with _timed("Roles") as step:
+        role_cache = build_role_cache()
+        ROLE_CACHE.clear()
+        ROLE_CACHE.update(role_cache)
+        cp_cache.role_cache = ROLE_CACHE
+        step["detail"] = f"{len(ROLE_CACHE)} Roles"
 
     logger.info(
         "Roles cached: %s",
         len(cp_cache.role_cache),
     )
 
-    logger.info(
-        "Building Enforcement Profile Reference Cache..."
-    )
+    logger.info("Building Enforcement Profile Reference Cache...")
 
-    cp_cache.profile_reference_cache = (
-        build_profile_reference_cache()
-    )
+    with _timed("Enforcement Profile references") as step:
+        cp_cache.profile_reference_cache = (
+            build_profile_reference_cache()
+        )
+        step["detail"] = (
+            f"{len(cp_cache.profile_reference_cache)} profiles"
+        )
 
-    logger.info(
-        "Building Role Mapping Reference Cache..."
-    )
+    logger.info("Building Role Mapping Reference Cache...")
 
-    cp_cache.role_mapping_reference_cache = (
-        build_role_mapping_reference_cache()
-    )
+    with _timed("Role Mapping references") as step:
+        cp_cache.role_mapping_reference_cache = (
+            build_role_mapping_reference_cache()
+        )
+        step["detail"] = (
+            f"{len(cp_cache.role_mapping_reference_cache)} policies"
+        )
 
-    logger.info(
-        "Building Role Reference Cache..."
-    )
+    logger.info("Building Role Reference Cache...")
 
-    cp_cache.role_reference_cache = (
-        build_role_reference_cache()
-    )
+    with _timed("Role references") as step:
+        cp_cache.role_reference_cache = (
+            build_role_reference_cache()
+        )
+        step["detail"] = (
+            f"{len(cp_cache.role_reference_cache)} Roles"
+        )
 
     logger.info(
         "Role references cached: %s",
-        len(
-            cp_cache.role_reference_cache
-        ),
+        len(cp_cache.role_reference_cache),
     )
 
-    logger.info(
-        "Building Unused Objects Cache..."
-    )
+    logger.info("Building Unused Objects Cache...")
 
-    cp_cache.unused_objects_cache = (
-        get_unused_object_summary()
-    )
+    with _timed("Unused Objects"):
+        cp_cache.unused_objects_cache = (
+            get_unused_object_summary()
+        )
 
-    logger.info(
-        "Building Impact Analysis Lookup Cache..."
-    )
+    logger.info("Building Impact Analysis Lookup Cache...")
 
-    cp_cache.impact_analysis_lookup_cache = (
-        build_impact_analysis_lookup_cache()
-    )
+    with _timed("Impact Analysis lookup") as step:
+        cp_cache.impact_analysis_lookup_cache = (
+            build_impact_analysis_lookup_cache()
+        )
+        step["detail"] = (
+            f"{len(cp_cache.impact_analysis_lookup_cache)} objects"
+        )
 
     logger.info(
         "Impact Analysis lookup objects cached: %s",
-        len(
-            cp_cache.impact_analysis_lookup_cache
-        ),
+        len(cp_cache.impact_analysis_lookup_cache),
     )
 
     cp_cache.initialised = True
+    _finish_timings()
 
-    logger.info(
-        "Cache initialisation complete."
-    )
-
+    logger.info("Cache initialisation complete.")
     logger.info(
         "Services: %s",
-        len(
-            cp_cache.services_cache
-        ),
+        len(cp_cache.services_cache),
     )
-
     logger.info(
         "Role Mapping Policies: %s",
-        len(
-            cp_cache.role_mapping_reference_cache
-        ),
+        len(cp_cache.role_mapping_reference_cache),
     )
-
     logger.info(
         "Enforcement Profiles: %s",
-        len(
-            cp_cache.profile_reference_cache
-        ),
+        len(cp_cache.profile_reference_cache),
     )
-
     logger.info(
         "Impact Analysis lookup objects: %s",
-        len(
-            cp_cache.impact_analysis_lookup_cache
-        ),
+        len(cp_cache.impact_analysis_lookup_cache),
     )
-
+    logger.info(
+        "Profiled endpoints cached: %s",
+        len(cp_env.current_state().fingerprint_cache or {}),
+    )
     logger.info(
         "Last Refresh: %s",
         cp_cache.last_refresh,
