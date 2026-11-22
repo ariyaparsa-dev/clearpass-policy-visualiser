@@ -3,6 +3,7 @@ import cp_env
 import socket
 import struct
 import hashlib
+import hmac
 import secrets
 import logging
 
@@ -18,6 +19,7 @@ RADIUS_ACCESS_CHALLENGE = 11
 ATTR_USER_NAME = 1
 ATTR_USER_PASSWORD = 2
 ATTR_NAS_IDENTIFIER = 32
+ATTR_MESSAGE_AUTHENTICATOR = 80
 ATTR_FILTER_ID = 11
 ATTR_REPLY_MESSAGE = 18
 ATTR_CLASS = 25
@@ -158,19 +160,23 @@ def _build_access_request(
 ):
     request_authenticator = secrets.token_bytes(16)
 
-    attributes = b""
+    # Message-Authenticator goes first, as a 16-byte zero placeholder.
+    # The real HMAC-MD5 value is filled in once the whole packet is built.
+    attributes = struct.pack(
+        "!BB",
+        ATTR_MESSAGE_AUTHENTICATOR,
+        18
+    ) + (b"\x00" * 16)
 
     attributes += _encode_text_attribute(
         ATTR_USER_NAME,
         username
     )
-
     attributes += _encode_user_password(
         password,
         secret,
         request_authenticator
     )
-
     if nas_identifier:
         attributes += _encode_text_attribute(
             ATTR_NAS_IDENTIFIER,
@@ -178,19 +184,26 @@ def _build_access_request(
         )
 
     packet_length = 20 + len(attributes)
-
     header = struct.pack(
         "!BBH",
         RADIUS_ACCESS_REQUEST,
         identifier,
         packet_length
     )
-
     packet = (
         header
         + request_authenticator
         + attributes
     )
+
+    # HMAC-MD5 over the whole packet (placeholder zeroed), keyed with the
+    # shared secret. The value sits at bytes 22-37 of the packet.
+    message_authenticator = hmac.new(
+        secret,
+        packet,
+        hashlib.md5
+    ).digest()
+    packet = packet[:22] + message_authenticator + packet[38:]
 
     return packet, request_authenticator
 
@@ -226,6 +239,41 @@ def _verify_response_authenticator(
     ).digest()
 
     return received_authenticator == calculated_authenticator
+
+
+def _verify_response_message_authenticator(
+    response_packet,
+    request_authenticator,
+    secret
+):
+    """
+    True = valid, False = invalid, None = response has no Message-Authenticator.
+    """
+    response_length = struct.unpack(
+        "!H",
+        response_packet[2:4]
+    )[0]
+    offset = 20
+    while offset + 2 <= response_length:
+        attr_type = response_packet[offset]
+        attr_length = response_packet[offset + 1]
+        if attr_length < 2:
+            break
+        if attr_type == ATTR_MESSAGE_AUTHENTICATOR:
+            if attr_length != 18:
+                return False
+            received = response_packet[offset + 2:offset + 18]
+            packet = bytearray(response_packet[:response_length])
+            packet[4:20] = request_authenticator
+            packet[offset + 2:offset + 18] = b"\x00" * 16
+            calculated = hmac.new(
+                secret,
+                bytes(packet),
+                hashlib.md5
+            ).digest()
+            return hmac.compare_digest(received, calculated)
+        offset += attr_length
+    return None
 
 
 def _decode_text(value):
@@ -334,6 +382,10 @@ def _parse_response_attributes(response_packet):
                 value,
                 attributes
             )
+
+        elif attr_type == ATTR_MESSAGE_AUTHENTICATOR:
+            # Binary HMAC value. Verified separately, not a reply attribute.
+            pass
 
         else:
             _add_attribute(
@@ -544,6 +596,23 @@ def authenticate_radius(username, password):
         ):
             raise RadiusAuthenticationError(
                 "Invalid RADIUS response authenticator. Check the shared secret."
+            )
+
+        message_authenticator_valid = _verify_response_message_authenticator(
+            response_packet,
+            request_authenticator,
+            secret
+        )
+
+        if message_authenticator_valid is False:
+            raise RadiusAuthenticationError(
+                "Invalid RADIUS Message-Authenticator in response. Check the shared secret."
+            )
+
+        if message_authenticator_valid is None:
+            logger.debug(
+                "RADIUS response for user %s did not include Message-Authenticator.",
+                username
             )
 
         reply_attributes = _parse_response_attributes(

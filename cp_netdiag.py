@@ -674,40 +674,37 @@ def _pap_password_block(password, secret, authenticator):
 
 
 def _build_access_request(
-    secret, nas_identifier, username, password, message_authenticator=False
+    secret, nas_identifier, username, password, message_authenticator=True
 ):
     """
     Build a PAP Access-Request.
-
     Return (packet_bytes, request_authenticator, identifier).
-
-    Message-Authenticator (RFC 3579) is optional and is left out by default.
+    Message-Authenticator (RFC 3579) is sent first, as the attribute order
+    recommended since the BlastRADIUS disclosure.
     """
     identifier = os.urandom(1)[0]
     authenticator = os.urandom(16)
 
-    attributes = (
+    attributes = b""
+    if message_authenticator:
+        # 16-byte zero placeholder, filled in once the packet is complete.
+        attributes += _radius_attr(80, b"\x00" * 16)
+    attributes += (
         _radius_attr(1, username.encode("utf-8"))
         + _radius_attr(2, _pap_password_block(password, secret, authenticator))
         + _radius_attr(32, nas_identifier.encode("utf-8"))
     )
 
-    if not message_authenticator:
-        header = struct.pack("!BBH", 1, identifier, 20 + len(attributes))
-
-        return header + authenticator + attributes, authenticator, identifier
-
-    # Message-Authenticator (attribute 80) is computed over the whole packet
-    # with the attribute's own value set to zeros (RFC 3579).
-    attributes += _radius_attr(80, b"\x00" * 16)
     header = struct.pack("!BBH", 1, identifier, 20 + len(attributes))
-    digest = hmac.new(
-        secret, header + authenticator + attributes, hashlib.md5
-    ).digest()
-    attributes = attributes[:-16] + digest
+    packet = header + authenticator + attributes
 
-    return header + authenticator + attributes, authenticator, identifier
+    if message_authenticator:
+        # HMAC-MD5 over the whole packet, keyed with the shared secret.
+        # The value sits at bytes 22-37 (header 4 + authenticator 16 + type/length 2).
+        digest = hmac.new(secret, packet, hashlib.md5).digest()
+        packet = packet[:22] + digest + packet[38:]
 
+    return packet, authenticator, identifier
 
 def _valid_response(data, request_authenticator, identifier, secret):
     """Check the Response Authenticator, which proves the shared secret."""
@@ -733,7 +730,7 @@ def probe_radius(
     nas_identifier,
     timeout=2.5,
     attempts=2,
-    message_authenticator=False,
+    message_authenticator=True,
 ):
     """
     Send one PAP Access-Request for a throw-away user and see how the server

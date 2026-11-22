@@ -348,6 +348,7 @@ clearpass-policy-visualiser
 - Native runs started with python app.py now use the Waitress server and the same protected startup as python server.py and Docker.
 - README: if native mode is chosen, then the recommended start command is python server.py with notes on VISUALISER_HOST and HTTPS for network access.
 - Check for updates button for Administrators, next to the version number. It contacts GitHub only when clicked, and keeps a successful result for an hour.
+- CPV now sends Message-Authenticator with its RADIUS requests, for both sign-in and the connection test, so it works with ClearPass servers that require it.
 
 ### v1.7.1
 
