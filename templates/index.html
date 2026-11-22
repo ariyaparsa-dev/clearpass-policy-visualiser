@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,15 +7,11 @@
     <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     rel="stylesheet">
-
     <link
     rel="icon"
     type="image/x-icon"
     href="{{ url_for('static', filename='favicon.ico') }}">
-
-
     <style>
-
         :root {
             --hpe-green: #01A982;
             --dark-bg: #0B111B;
@@ -25,72 +20,60 @@
             --border: #2D3748;
             --text: #E2E8F0;
         }
-
         body {
             background-color: var(--dark-bg);
             color: var(--text);
             min-height: 100vh;
         }
-
         .stat-card-clickable {
             text-decoration: none;
             color: inherit;
             display: block;
         }
-
         .stat-card-clickable:hover {
             text-decoration: none;
             color: inherit;
         }
-
         .stat-card-clickable .stat-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 0 12px rgba(1,169,130,.45);
             border-left-color: #01A982;
             cursor: pointer;
         }
-
         .navbar {
             background-color: #111827;
             border-bottom: 3px solid var(--hpe-green);
         }
-
         .brand-green {
             color: var(--hpe-green);
             font-weight: 700;
         }
-
         .main-card {
             background: var(--dark-card);
             border: 1px solid var(--border);
             border-radius: 12px;
         }
-
         .card-header-custom {
             background: var(--dark-card-2);
             border-bottom: 1px solid var(--border);
             border-radius: 12px 12px 0 0;
             padding: 10px 16px;
         }
-
         .stat-card {
             background: var(--dark-card);
             border-left: 5px solid var(--hpe-green);
             border-radius: 10px;
             padding: 10px;
             height: 100%;
-
             transition:
                 transform 0.2s ease-in-out,
                 box-shadow 0.2s ease-in-out;
         }
-
         .stat-number {
             font-size: 1.4rem;
             font-weight: bold;
             color: var(--hpe-green);
         }
-
         .health-grid {
             display: grid;
             grid-template-columns: 2fr repeat(5, 1fr);
@@ -101,37 +84,30 @@
                 grid-template-columns: repeat(3, 1fr);
             }
         }
-    
         .health-item {
             display: flex;
             align-items: center;
-
             background: #182130;
             border-left: 4px solid #01A982;
             padding: 8px;
             border-radius: 8px;
         }
-
         .health-item strong {
             font-size: 0.8rem;
         }
-
         .health-item span {
             font-size: 0.9rem;
             margin-left: 10px;
         }
-
         .health-card-body {
             background: var(--dark-card);
             color: var(--text);
             padding: 12px;
             border-radius: 0 0 12px 12px;
         }
-
         .health-card-body div {
             margin-bottom: 6px;
         }
-
         .card-header-custom h5 {
             margin: 0;
             color: white;
@@ -141,126 +117,100 @@
             font-weight: 700;
             font-size: 0.8rem;
         }
-
         .ms-2 {
             font-size: 0.8rem;
         }
-
         .service-status {
             font-size: 0.75rem;
             margin-left: 8px;
         }
-
         .status-fail {
             color: #DC3545;
             font-weight: 700;
         }
-
         .table-dark-custom {
             background: transparent !important;
             color: #E2E8F0 !important;
         }
-
         .table-dark-custom thead tr {
             background: #1B2432 !important;
         }
-
         .table-dark-custom tbody tr {
             background: #151D29 !important;
         }
-
         .table-dark-custom tbody tr:hover {
             background: #233046 !important;
         }
-
         .table-dark-custom th {
             color: #FFFFFF !important;
             border-color: #2D3748 !important;
             background: #1B2432 !important;
         }
-
         .table-dark-custom td {
             color: #E2E8F0 !important;
             border-color: #2D3748 !important;
             background: #151D29 !important;
         }
-
         .table-dark-custom tbody tr:hover {
             background-color: rgba(1,169,130,.12);
         }
-
         .service-system {
             color: #6CB6FF;
             font-weight: 500;
         }
-
         .service-category {
             color: #9CA3AF;
             font-style: italic;
             font-weight: 600;
         }
-
         .badge-system {
             background-color: #0D6EFD;
             color: white;
         }
-
         .badge-category {
             background-color: #6C757D;
             color: white;
         }
-
         .service-link {
             text-decoration: none;
             color: #8FEFCF;
             font-weight: 500;
         }
-
         .service-link:hover {
             color: white;
         }
-
         .form-control {
             background: #111827;
             border: 1px solid var(--border);
             color: white;
         }
-
         .form-control:focus {
             background: #111827;
             color: white;
             border-color: var(--hpe-green);
             box-shadow: 0 0 0 .25rem rgba(1,169,130,.25);
         }
-
         .badge-radius {
             background-color: #0D6EFD;
         }
-
         .badge-tacacs {
             background-color: #DC3545;
         }
-
         .badge-webauth {
             background-color: #FFC107;
             color: black;
         }
-
         .badge-app {
             background-color: #6C757D;
         }
-
         .btn-outline-success {
             border-color: #01A982;
             color: #01A982;
         }
-
         .btn-outline-success:hover {
             background-color: #01A982;
             color: #001B14;
         }
-        
-
         .hit-count-info {
             display: inline-flex;
             align-items: center;
@@ -280,50 +230,40 @@
             cursor: help;
             vertical-align: middle;
         }
-
         .hit-count-info:hover {
             border-color: #01A982;
             color: #01A982;
         }
-                
-	table {
-    	    color: #E2E8F0 !important;
-   	}
-
-	thead {
-    	background: #1B2432;
-	}
-
-	tbody tr {
-    	background: #151D29;
-	}
-
-	tbody tr:hover {
-    	background: #233046 !important;
-	}
-
+        table {
+            color: #E2E8F0 !important;
+        }
+        thead {
+            background: #1B2432;
+        }
+        tbody tr {
+            background: #151D29;
+        }
+        tbody tr:hover {
+            background: #233046 !important;
+        }
     .impact-lookup-card {
         position: relative;
         margin-bottom: 24px;
         overflow: visible;
     }
-
     .impact-lookup-body {
         padding: 16px;
     }
-
     .impact-lookup-grid {
         display: grid;
         grid-template-columns: minmax(180px, 0.24fr) minmax(0, 1fr) auto;
         align-items: end;
         gap: 12px;
     }
-
     .impact-lookup-field {
         position: relative;
         min-width: 0;
     }
-
     .impact-lookup-label {
         display: block;
         margin-bottom: 6px;
@@ -331,7 +271,6 @@
         font-size: 0.78rem;
         font-weight: 700;
     }
-
     .impact-lookup-select,
     .impact-lookup-input {
         width: 100%;
@@ -342,19 +281,16 @@
         color: #FFFFFF;
         padding: 8px 11px;
     }
-
     .impact-lookup-select:focus,
     .impact-lookup-input:focus {
         outline: none;
         border-color: var(--hpe-green);
         box-shadow: 0 0 0 .25rem rgba(1, 169, 130, .20);
     }
-
     .impact-lookup-button {
         min-height: 42px;
         white-space: nowrap;
     }
-
     .impact-lookup-results {
         position: absolute;
         z-index: 2000;
@@ -369,11 +305,9 @@
         border-radius: 8px;
         box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
     }
-
     .impact-lookup-results.show {
         display: block;
     }
-
     .impact-lookup-result {
         display: flex;
         justify-content: space-between;
@@ -388,25 +322,21 @@
         text-align: left;
         cursor: pointer;
     }
-
     .impact-lookup-result:last-child {
         border-bottom: 0;
     }
-
     .impact-lookup-result:hover,
     .impact-lookup-result:focus,
     .impact-lookup-result.active {
         outline: none;
         background: #233046;
     }
-
     .impact-lookup-result-name {
         min-width: 0;
         overflow-wrap: anywhere;
         font-size: 0.9rem;
         font-weight: 600;
     }
-
     .impact-lookup-type {
         flex-shrink: 0;
         padding: 4px 7px;
@@ -416,38 +346,31 @@
         font-size: 0.68rem;
         font-weight: 700;
     }
-
     .impact-lookup-message {
         padding: 12px;
         color: #9CA3AF;
         font-size: 0.82rem;
     }
-
     .impact-lookup-help {
         margin-top: 8px;
         color: #9CA3AF;
         font-size: 0.75rem;
     }
-
     @media (max-width: 850px) {
         .impact-lookup-grid {
             grid-template-columns: 1fr;
         }
-
         .impact-lookup-button {
             width: 100%;
         }
     }
-
     .timing-info { position: relative; display: inline-flex; align-items: center;
             justify-content: center; width: 22px; height: 22px; margin-left: 6px;
             border: 1.5px solid #9CA3AF; border-radius: 50%;
             font-family: Georgia, "Times New Roman", serif; font-style: italic;
             font-size: 15px; font-weight: 700; line-height: 1;
             cursor: help; color: #E2E8F0; vertical-align: middle; }
-
     .timing-info:hover, .timing-info:focus { border-color: #01A982; color: #01A982; outline: none; }
-            
     .timing-info .timing-panel { display: none; position: absolute; right: 0; top: 130%;
             z-index: 2000; min-width: 320px; padding: 12px 14px; background: #111827;
             border: 1px solid #475569; border-radius: 8px; box-shadow: 0 12px 30px rgba(0,0,0,.4);
@@ -458,7 +381,6 @@
     .timing-panel td.num { text-align: right; padding-left: 16px; color: #01A982; }
     .timing-panel .muted { color: #9CA3AF; }
     .timing-panel .total td { border-top: 1px solid #334155; padding-top: 6px; font-weight: 700; }
-
     .timing-info .timing-panel {
         font-family: inherit;
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -470,15 +392,23 @@
     .timing-info .timing-panel .total td {
         font-weight: 700;
     }
-
+    /* Check for updates (Administrators only) */
+    .update-check { margin-left: 8px; padding: 2px 8px; font-size: 0.75rem;
+        font-weight: 500; background: transparent; color: #9CA3AF;
+        border: 1px solid #475569; border-radius: 4px; cursor: pointer;
+        vertical-align: middle; }
+    .update-check:hover { color: #01A982; border-color: #01A982; }
+    .update-check:disabled { opacity: 0.6; cursor: wait; }
+    .update-result { margin-left: 8px; font-size: 0.75rem; font-weight: 500;
+        color: #9CA3AF; vertical-align: middle; }
+    .update-result.available a { color: #FBBF24; font-weight: 700; text-decoration: none; }
+    .update-result.available a:hover { text-decoration: underline; }
+    .update-result.error { color: #F87171; }
     </style>
 </head>
-
 <body>
-
 <nav class="navbar navbar-expand-lg navbar-dark py-3">
     <div class="container-fluid px-4">
-
         <span class="navbar-brand fs-4 mb-0">
             <span class="brand-green">ClearPass</span>
             Policy Visualizer
@@ -493,10 +423,13 @@
             >
                 v{{ version }}
             </span>
+            {% if current_user.is_authenticated and current_user.role == 'Admin' %}
+            <button type="button" id="update-check" class="update-check"
+                    title="Check GitHub for a newer release">Check for updates</button>
+            <span id="update-result" class="update-result" aria-live="polite"></span>
+            {% endif %}
         </span>
-
         <div class="ms-auto d-flex flex-wrap align-items-center justify-content-end gap-4">
-
             {% if active_environment and (environments|length > 1 or active_environment.production) %}
             <form method="post"
                   action="{{ url_for('auth.switch_environment') }}"
@@ -524,7 +457,6 @@
                 {% endif %}
             </form>
             {% endif %}
-
             {% if current_user.is_authenticated and current_user.role == 'Admin' %}
             <a href="{{ url_for('env_admin.index') }}"
                class="btn btn-sm btn-outline-success"
@@ -532,7 +464,6 @@
                 &#9881; Manage environments
             </a>
             {% endif %}
-
             {% if current_user.is_authenticated %}
             <div style="font-size:0.9rem; color:#E2E8F0;">
                 Logged in as
@@ -547,10 +478,8 @@
                 </a>
             </div>
             {% endif %}
-
             <div class="d-flex align-items-center gap-3">
                 <div style="font-size:0.78rem; color:#9CA3AF; text-align:right; line-height:1.25;">
-
                     Last Refresh:
                     {% if load_timings %}
                     <span class="timing-info" tabindex="0" aria-label="Load timings">i
@@ -574,7 +503,6 @@
                     </span>
                     {% endif %}
                     <br>{{ last_refresh }}
-                    
                 </div>
                 <form method="post" action="{{ url_for('refresh_cache') }}" class="d-inline mb-0"
                     onsubmit="return confirm('Refresh ClearPass data and caches?')">
@@ -584,48 +512,36 @@
                         Refresh Services
                     </button>
                 </form>
-
             </div>
-
         </div>
     </div>
 </nav>
-
 <div class="container-fluid mt-4">
-
     <div class="row mb-4">
-
         <div class="col">
             <div class="stat-card">
-
                 <div>
                     <strong>Total Services</strong>
                 </div>
-
                 <div class="stat-number">
                     {{ stats.total_services }}
                 </div>
-
                 <div style="font-size:0.8rem;">
                     Enabled:
                     <span class="status-ok">
                         {{ stats.enabled_services }}
                     </span>
                 </div>
-
                 <div style="font-size:0.8rem;">
                     Top Hits:
                     {% if stats.top_hits is none %}n/a{% else %}{{ "{:,}".format(stats.top_hits) }}{% endif %}
                 </div>
-
                 <div style="font-size:0.8rem;">
                     Least Hits:
                     {% if stats.least_hits is none %}n/a{% else %}{{ "{:,}".format(stats.least_hits) }}{% endif %}
                 </div>
-
             </div>
         </div>
-
         <div class="col">
             <div class="stat-card">
                 <div><strong>TACACS Services</strong></div>
@@ -634,19 +550,16 @@
                 </div>
             </div>
         </div>
-
         <div class="col">
             <div class="stat-card">
                 <div>
                     <strong>MAC Authentication</strong>
                 </div>
-
                 <div class="stat-number">
                     {{ stats.mac_authentication }}
                 </div>
             </div>
         </div>
-
         <div class="col">
             <div class="stat-card">
                 <div><strong>802.1X Wired</strong></div>
@@ -655,7 +568,6 @@
                 </div>
             </div>
         </div>
-
         <div class="col">
             <div class="stat-card">
                 <div><strong>802.1X Wireless</strong></div>
@@ -664,7 +576,6 @@
                 </div>
             </div>
         </div>
-
         <div class="col">
             <div class="stat-card">
                 <div><strong>Application Services</strong></div>
@@ -673,7 +584,6 @@
                 </div>
             </div>
         </div>
-
         <div class="col">
             <div class="stat-card">
                 <div><strong>WebAuth Services</strong></div>
@@ -682,20 +592,15 @@
                 </div>
             </div>
         </div>
-
         <div class="col">
-
             <a
                 href="{{ url_for('unused_objects') }}"
                 class="stat-card-clickable"
             >
-
                 <div class="stat-card">
-
                     <div>
                         <strong>Unused Objects</strong>
                     </div>
-
                     <div
                         style="
                             font-size:0.65rem;
@@ -705,7 +610,6 @@
                     >
                         Click for details
                     </div>
-
                     <div
                         style="
                             font-size:0.80rem;
@@ -717,58 +621,44 @@
                         /
                         {{ unused.profiles.total_count }}
                     </div>
-
                     <div style="font-size:0.80rem;">
                         Enf Policies:
                         {{ unused.policies.unused_count }}
                         /
                         {{ unused.policies.total_count }}
                     </div>
-
                     <div style="font-size:0.80rem;">
                         Role Maps:
                         {{ unused.role_maps.unused_count }}
                         /
                         {{ unused.role_maps.total_count }}
                     </div>
-
                     <div style="font-size:0.80rem;">
                         Roles:
                         {{ unused.roles.unused_count }}
                         /
                         {{ unused.roles.total_count }}
                     </div>
-
                 </div>
-
             </a>
-
         </div>
-
     </div>
-
     <!-- Impact Analysis Lookup -->
     <div class="main-card impact-lookup-card">
-
         <div class="card-header-custom">
             <h5 class="mb-0">
                 Impact Analysis Lookup
             </h5>
         </div>
-
         <div class="impact-lookup-body">
-
             <div class="impact-lookup-grid">
-
                 <div class="impact-lookup-field">
-
                     <label
                         class="impact-lookup-label"
                         for="impactLookupType"
                     >
                         Object Type
                     </label>
-
                     <select
                         id="impactLookupType"
                         class="impact-lookup-select"
@@ -786,20 +676,15 @@
                         <option value="role">
                             Roles
                         </option>
-
                     </select>
-
                 </div>
-
                 <div class="impact-lookup-field">
-
                     <label
                         class="impact-lookup-label"
                         for="impactLookupInput"
                     >
                         Object Name
                     </label>
-
                     <input
                         id="impactLookupInput"
                         class="impact-lookup-input"
@@ -810,15 +695,12 @@
                         aria-controls="impactLookupResults"
                         aria-expanded="false"
                     >
-
                     <div
                         id="impactLookupResults"
                         class="impact-lookup-results"
                         role="listbox"
                     ></div>
-
                 </div>
-
                 <button
                     id="impactLookupOpen"
                     class="btn btn-outline-success impact-lookup-button"
@@ -827,140 +709,87 @@
                 >
                     Open Impact Analysis
                 </button>
-
             </div>
-
             <div class="impact-lookup-help">
                 Enter at least two characters, then select an object.
                 Reports open in a new tab.
             </div>
-
         </div>
-
     </div>
-
-
 </div>
-
-
-
 <div class="main-card mb-4">
-
     <div class="card-header-custom">
         <h5 class="mb-0">ClearPass Connectivity</h5>
     </div>
-
     <div class="health-card-body">
-
         {% if health.connected %}
-
             <div class="status-ok mb-2">
                 ● Connected
             </div>
-
 <div class="health-grid">
-
     <div class="health-item">
         <strong>Server</strong>
         <span class="status-ok">
         {{ health.server }}{% if health.version %} <span style="color:#9CA3AF; font-weight:400; white-space:nowrap;">v{{ health.version }}</span>{% endif %}
         </span>
     </div>
-
         <div class="health-item">
         <strong>Profiled Endpoints</strong>
         <span style="color:#E2E8F0;">{{ "{:,}".format(stats.endpoint_count) }}</span>
     </div>
-
     <div class="health-item">
         <strong>API Authentication</strong>
-
         {% if health.authentication %}
             <span class="status-ok">OK</span>
         {% else %}
             <span class="status-fail">FAILED</span>
         {% endif %}
-
     </div>
-
     <div class="health-item">
-
         <strong>Reachability</strong>
-
         {% if health.reachable %}
-
             <span class="status-ok">
                 OK
             </span>
-
         {% else %}
-
             <span class="status-fail">
                 FAILED
             </span>
-
         {% endif %}
-
-    </div>    
-
+    </div>
     <div class="health-item">
         <strong>Service API</strong>
-
         {% if health.service_api %}
             <span class="status-ok">OK</span>
         {% else %}
             <span class="status-fail">FAILED</span>
         {% endif %}
-
     </div>
-
     <div class="health-item">
         <strong>Response Time</strong>
-
         {% if health.response_status == "good" %}
-
             <span class="status-ok">
                 {{ health.response_ms }} ms
             </span>
-
         {% elif health.response_status == "warning" %}
-
             <span style="color:#FFC107;font-weight:700;">
                 {{ health.response_ms }} ms
             </span>
-
         {% else %}
-
             <span class="status-fail">
                 {{ health.response_ms }} ms
             </span>
-
         {% endif %}
-
     </div>
-
-
 </div>
-
-
-
-
         {% else %}
-
             <div class="text-danger mb-2">
                 ❌ Connection Failed
             </div>
-
             <div>{{ health.error }}</div>
-
         {% endif %}
-
     </div>
-
 </div>
-
-
-
 <div class="main-card">
     <div class="card-header-custom">
         <div class="row">
@@ -986,7 +815,6 @@
                     >
                         Order ↕
                     </th>
-
                     <th
                         id="nameHeader"
                         style="cursor:pointer;"
@@ -994,7 +822,6 @@
                     >
                         Name ↕
                     </th>
-
                     <th
                         id="typeHeader"
                         style="cursor:pointer;"
@@ -1002,7 +829,6 @@
                     >
                         Type ↕
                     </th>
-
                     <th
                         id="hitCountHeader"
                         style="cursor:pointer;"
@@ -1017,20 +843,14 @@
                         >i</span>
                         <span id="hitCountSortIndicator"> ↕</span>
                     </th>
-
                     <th>Action</th>
                 </tr>
             </thead>
-
             <tbody id="serviceTable">
-
             {% for s in services %}
-
                 <tr data-service-name="{{ s.name|e }}">
-
-                    <td>{{ s.order_no }}</td>                  
+                    <td>{{ s.order_no }}</td>
                     <!--<td>{{ s.name }}</td> -->
-
                     <td>
                         {% if s.name.startswith('[') %}
                             <span class="badge badge-system">
@@ -1046,37 +866,25 @@
                             <span class="service-category">
                                 {{ s.name }}
                             </span>
-                        
                         {% else %}
-
                             {{ s.name }}
-
                             {% if s.enabled %}
-
                                 <span class="status-ok ms-2 service-status">
                                     ● Enabled
                                 </span>
-
                             {% else %}
-
                                 <span style="color:#F59E0B;" class="ms-2 service-status">
                                     ● Disabled
                                 </span>
-
                             {% endif %}
-
                         {% endif %}
-
                     </td>
-                    
                     <td class="service-type">
                         {{ s.type }}
                     </td>
-
                     <td class="hit-count">
                         {% if s.hit_count is none %}n/a{% else %}{{ "{:,}".format(s.hit_count|default(0)) }}{% endif %}
                     </td>
-
                     <td>
                         {% if s.name.startswith('-----') %}
                             <span class="badge bg-secondary">
@@ -1088,68 +896,43 @@
                                 Visualise
                             </a>
                         {% endif %}
-
                     </td>
-
                 </tr>
-
             {% endfor %}
-
             </tbody>
-
         </table>
-
     </div>
-
 </div>
-
 </div>
-
 <script>
-
 const impactLookupInput =
     document.getElementById("impactLookupInput");
-
 const impactLookupType =
     document.getElementById("impactLookupType");
-
 const impactLookupResults =
     document.getElementById("impactLookupResults");
-
 const impactLookupOpen =
     document.getElementById("impactLookupOpen");
-
 let impactLookupItems = [];
 let impactLookupSelectedIndex = -1;
 let impactLookupSelectedItem = null;
 let impactLookupRequestId = 0;
-
 function closeImpactLookupResults() {
-
     impactLookupResults.classList.remove("show");
     impactLookupInput.setAttribute("aria-expanded", "false");
     impactLookupSelectedIndex = -1;
-
 }
-
 function clearImpactLookupSelection() {
-
     impactLookupSelectedItem = null;
     impactLookupOpen.disabled = true;
-
 }
-
 function selectImpactLookupItem(item) {
-
     impactLookupSelectedItem = item;
     impactLookupInput.value = item.name;
     impactLookupOpen.disabled = false;
     closeImpactLookupResults();
-
 }
-
 function openImpactLookupItem() {
-
     if (
         !impactLookupSelectedItem
         ||
@@ -1157,26 +940,20 @@ function openImpactLookupItem() {
     ) {
         return;
     }
-
     window.open(
         impactLookupSelectedItem.url,
         "_blank",
         "noopener,noreferrer"
     );
-
 }
-
 function setImpactLookupActiveIndex(index) {
-
     const resultButtons =
         impactLookupResults.querySelectorAll(
             ".impact-lookup-result"
         );
-
     resultButtons.forEach(function (button) {
         button.classList.remove("active");
     });
-
     if (
         index < 0
         ||
@@ -1185,28 +962,20 @@ function setImpactLookupActiveIndex(index) {
         impactLookupSelectedIndex = -1;
         return;
     }
-
     impactLookupSelectedIndex = index;
-
     const activeButton = resultButtons[index];
     activeButton.classList.add("active");
     activeButton.scrollIntoView({
         block: "nearest"
     });
-
 }
-
 function renderImpactLookupResults(data) {
-
     impactLookupResults.innerHTML = "";
     impactLookupItems = Array.isArray(data.results)
         ? data.results
         : [];
-
     impactLookupSelectedIndex = -1;
-
     if (impactLookupItems.length === 0) {
-
         const message = document.createElement("div");
         message.className = "impact-lookup-message";
         message.textContent = "No matching Impact Analysis objects found.";
@@ -1214,67 +983,47 @@ function renderImpactLookupResults(data) {
         impactLookupResults.classList.add("show");
         impactLookupInput.setAttribute("aria-expanded", "true");
         return;
-
     }
-
     impactLookupItems.forEach(function (item, index) {
-
         const button = document.createElement("button");
         button.type = "button";
         button.className = "impact-lookup-result";
         button.setAttribute("role", "option");
-
         const name = document.createElement("span");
         name.className = "impact-lookup-result-name";
         name.textContent = item.name;
-
         const type = document.createElement("span");
         type.className = "impact-lookup-type";
         type.textContent = item.type_label;
-
         button.appendChild(name);
         button.appendChild(type);
-
         button.addEventListener("click", function () {
             selectImpactLookupItem(item);
         });
-
         button.addEventListener("dblclick", function () {
             selectImpactLookupItem(item);
             openImpactLookupItem();
         });
-
         button.dataset.index = String(index);
         impactLookupResults.appendChild(button);
-
     });
-
     impactLookupResults.classList.add("show");
     impactLookupInput.setAttribute("aria-expanded", "true");
-
 }
-
 async function searchImpactAnalysisObjects() {
-
     const query = impactLookupInput.value.trim();
-
     clearImpactLookupSelection();
-
     if (query.length < 2) {
         impactLookupResults.innerHTML = "";
         closeImpactLookupResults();
         return;
     }
-
     const requestId = ++impactLookupRequestId;
-
     const parameters = new URLSearchParams({
         q: query,
         type: impactLookupType.value
     });
-
     try {
-
         const response = await fetch(
             `/api/impact-analysis/lookup?${parameters.toString()}`,
             {
@@ -1283,82 +1032,53 @@ async function searchImpactAnalysisObjects() {
                 }
             }
         );
-
         if (!response.ok) {
             throw new Error("Lookup request failed");
         }
-
         const data = await response.json();
-
         if (requestId !== impactLookupRequestId) {
             return;
         }
-
         renderImpactLookupResults(data);
-
     } catch (error) {
-
         if (requestId !== impactLookupRequestId) {
             return;
         }
-
         impactLookupResults.innerHTML = "";
-
         const message = document.createElement("div");
         message.className = "impact-lookup-message";
         message.textContent = "Impact Analysis lookup is unavailable.";
         impactLookupResults.appendChild(message);
         impactLookupResults.classList.add("show");
         impactLookupInput.setAttribute("aria-expanded", "true");
-
         console.error(error);
-
     }
-
 }
-
 let impactLookupTimer = null;
-
 impactLookupInput.addEventListener("input", function () {
-
     window.clearTimeout(impactLookupTimer);
-
     impactLookupTimer = window.setTimeout(
         searchImpactAnalysisObjects,
         180
     );
-
 });
-
 impactLookupType.addEventListener(
     "change",
     function () {
-
         impactLookupRequestId += 1;
-
         impactLookupInput.value = "";
-
         impactLookupItems = [];
-
         impactLookupSelectedIndex = -1;
-
         clearImpactLookupSelection();
-
         impactLookupResults.innerHTML = "";
-
         closeImpactLookupResults();
-
         impactLookupInput.focus();
-
     }
 );
-
 impactLookupInput.addEventListener("keydown", function (event) {
-
     if (!impactLookupResults.classList.contains("show")) {
         return;
     }
-
     if (event.key === "ArrowDown") {
         event.preventDefault();
         setImpactLookupActiveIndex(
@@ -1368,7 +1088,6 @@ impactLookupInput.addEventListener("keydown", function (event) {
             )
         );
     }
-
     if (event.key === "ArrowUp") {
         event.preventDefault();
         setImpactLookupActiveIndex(
@@ -1378,10 +1097,8 @@ impactLookupInput.addEventListener("keydown", function (event) {
             )
         );
     }
-
     if (event.key === "Enter") {
         event.preventDefault();
-
         if (impactLookupSelectedIndex >= 0) {
             selectImpactLookupItem(
                 impactLookupItems[
@@ -1390,25 +1107,19 @@ impactLookupInput.addEventListener("keydown", function (event) {
             );
             return;
         }
-
         if (impactLookupSelectedItem) {
             openImpactLookupItem();
         }
     }
-
     if (event.key === "Escape") {
         closeImpactLookupResults();
     }
-
 });
-
 impactLookupOpen.addEventListener(
     "click",
     openImpactLookupItem
 );
-
 document.addEventListener("click", function (event) {
-
     if (
         !event.target.closest(".impact-lookup-field")
         &&
@@ -1416,46 +1127,30 @@ document.addEventListener("click", function (event) {
     ) {
         closeImpactLookupResults();
     }
-
 });
-
-
 document.getElementById("serviceSearch")
     .addEventListener("keyup", function() {
-
     let filter = this.value.toLowerCase();
-
     let rows =
         document.querySelectorAll("#serviceTable tr");
-
     rows.forEach(row => {
-
         let text =
             row.textContent.toLowerCase();
-
         row.style.display =
             text.includes(filter)
             ? ""
             : "none";
-
     });
-
 });
-
 const serviceTable =
     document.getElementById("serviceTable");
-
 let activeSortColumn = null;
 let activeSortAscending = true;
-
-
 function getServiceRows() {
     return Array.from(
         serviceTable.querySelectorAll("tr")
     );
 }
-
-
 function updateSortIndicators(
     activeHeader,
     ascending
@@ -1472,34 +1167,27 @@ function updateSortIndicators(
         document.getElementById(
             "hitCountSortIndicator"
         );
-
     orderHeader.textContent = "Order ↕";
     nameHeader.textContent = "Name ↕";
     typeHeader.textContent = "Type ↕";
     hitCountSortIndicator.textContent = "↕";
-
     if (activeHeader === orderHeader) {
         orderHeader.textContent =
             ascending ? "Order ↑" : "Order ↓";
     }
-
     if (activeHeader === nameHeader) {
         nameHeader.textContent =
             ascending ? "Name ↑" : "Name ↓";
     }
-
     if (activeHeader === typeHeader) {
         typeHeader.textContent =
             ascending ? "Type ↑" : "Type ↓";
     }
-
     if (activeHeader === hitCountHeader) {
         hitCountSortIndicator.textContent =
             ascending ? "↑" : "↓";
     }
 }
-
-
 function sortServiceTable(
     column,
     dataType,
@@ -1510,7 +1198,6 @@ function sortServiceTable(
             !activeSortAscending;
     } else {
         activeSortColumn = column;
-
         if (column === 3) {
             // Hit Count starts highest to lowest.
             activeSortAscending = false;
@@ -1519,17 +1206,13 @@ function sortServiceTable(
             activeSortAscending = true;
         }
     }
-
     const rows = getServiceRows();
-
     rows.sort(function (a, b) {
         let aValue;
         let bValue;
-
         if (column === 1) {
             aValue =
                 a.dataset.serviceName || "";
-
             bValue =
                 b.dataset.serviceName || "";
         } else {
@@ -1537,29 +1220,24 @@ function sortServiceTable(
                 a.children[column]
                     .textContent
                     .trim();
-
             bValue =
                 b.children[column]
                     .textContent
                     .trim();
         }
-
         if (dataType === "number") {
             aValue = parseInt(
                 aValue.replace(/,/g, ""),
                 10
             ) || 0;
-
             bValue = parseInt(
                 bValue.replace(/,/g, ""),
                 10
             ) || 0;
-
             return activeSortAscending
                 ? aValue - bValue
                 : bValue - aValue;
         }
-
         const comparison =
             aValue.localeCompare(
                 bValue,
@@ -1568,36 +1246,26 @@ function sortServiceTable(
                     sensitivity: "base"
                 }
             );
-
         return activeSortAscending
             ? comparison
             : -comparison;
     });
-
     rows.forEach(function (row) {
         serviceTable.appendChild(row);
     });
-
     updateSortIndicators(
         header,
         activeSortAscending
     );
 }
-
-
 const orderHeader =
     document.getElementById("orderHeader");
-
 const nameHeader =
     document.getElementById("nameHeader");
-
 const typeHeader =
     document.getElementById("typeHeader");
-
 const hitCountHeader =
     document.getElementById("hitCountHeader");
-
-
 orderHeader.addEventListener(
     "click",
     function () {
@@ -1608,8 +1276,6 @@ orderHeader.addEventListener(
         );
     }
 );
-
-
 nameHeader.addEventListener(
     "click",
     function () {
@@ -1620,8 +1286,6 @@ nameHeader.addEventListener(
         );
     }
 );
-
-
 typeHeader.addEventListener(
     "click",
     function () {
@@ -1632,8 +1296,6 @@ typeHeader.addEventListener(
         );
     }
 );
-
-
 hitCountHeader.addEventListener(
     "click",
     function () {
@@ -1644,8 +1306,55 @@ hitCountHeader.addEventListener(
         );
     }
 );
-
 </script>
+{% if current_user.is_authenticated and current_user.role == 'Admin' %}
+<script>
+/* Check for updates: asks CPV, which asks GitHub, only when clicked. */
+(function () {
+    var button = document.getElementById("update-check");
+    var result = document.getElementById("update-result");
+    if (!button || !result) { return; }
 
+    button.addEventListener("click", function () {
+        button.disabled = true;
+        result.className = "update-result";
+        result.textContent = "Checking…";
+
+        fetch({{ url_for('check_update') | tojson }}, {
+            headers: { "Accept": "application/json" },
+            credentials: "same-origin"
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                result.textContent = "";
+                if (d.status === "available") {
+                    result.className = "update-result available";
+                    var text = "v" + d.latest + " is available";
+                    if (d.url) {
+                        var link = document.createElement("a");
+                        link.href = d.url;
+                        link.target = "_blank";
+                        link.rel = "noopener noreferrer";
+                        link.textContent = text;
+                        result.appendChild(link);
+                    } else {
+                        result.textContent = text;
+                    }
+                } else if (d.status === "current") {
+                    result.textContent = "You are on the latest version.";
+                } else {
+                    result.className = "update-result error";
+                    result.textContent = d.message || "Update check failed.";
+                }
+            })
+            .catch(function () {
+                result.className = "update-result error";
+                result.textContent = "Update check failed.";
+            })
+            .finally(function () { button.disabled = false; });
+    });
+})();
+</script>
+{% endif %}
 </body>
 </html>

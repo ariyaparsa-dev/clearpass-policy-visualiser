@@ -267,8 +267,10 @@ python -m venv venv
 venv\Scripts\activate          # Windows
 source venv/bin/activate       # Linux and macOS
 python -m pip install -r requirements.txt
-python app.py
+python server.py
 ```
+
+CPV listens on all interfaces (port 5000) when run natively. To allow only local access, set VISUALISER_HOST=127.0.0.1 before starting it. If other users connect over the network, put CPV behind an HTTPS reverse proxy and set SESSION_COOKIE_SECURE=true, because sign-in credentials are otherwise sent unencrypted.
 
 ---
 
@@ -341,6 +343,11 @@ clearpass-policy-visualiser
 ---
 
 ## Changelog
+
+### v1.7.2
+- Native runs started with python app.py now use the Waitress server and the same protected startup as python server.py and Docker.
+- README: if native mode is chosen, then the recommended start command is python server.py with notes on VISUALISER_HOST and HTTPS for network access.
+- Check for updates button for Administrators, next to the version number. It contacts GitHub only when clicked, and keeps a successful result for an hour.
 
 ### v1.7.1
 

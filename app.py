@@ -1869,6 +1869,97 @@ def _finish_timings():
         pending["total"],
     )
 
+# -------------------------------------------------
+# Check for a newer release on GitHub
+#
+# Runs only when an Administrator clicks the button.
+# The result is kept for an hour so repeated clicks do
+# not hit GitHub's unauthenticated rate limit.
+# -------------------------------------------------
+
+LATEST_RELEASE_URL = (
+    "https://api.github.com/repos/ariyaparsa-dev/"
+    "clearpass-policy-visualiser/releases/latest"
+)
+_UPDATE_CACHE_SECONDS = 3600
+_update_cache = {"time": 0.0, "result": None}
+
+
+def _version_tuple(value):
+    """'v1.7.10' -> (1, 7, 10). Non-numeric parts count as 0."""
+    parts = []
+
+    for part in str(value).strip().lstrip("vV").split("."):
+        digits = "".join(ch for ch in part if ch.isdigit())
+        parts.append(int(digits) if digits else 0)
+
+    return tuple(parts)
+
+
+@app.route("/api/check-update")
+@login_required
+def check_update():
+    if getattr(current_user, "role", None) != "Admin":
+        abort(403)
+
+    now = time.time()
+
+    if (
+        _update_cache["result"] is not None
+        and now - _update_cache["time"] < _UPDATE_CACHE_SECONDS
+    ):
+        return jsonify(_update_cache["result"])
+
+    try:
+        response = requests.get(
+            LATEST_RELEASE_URL,
+            timeout=5,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "User-Agent": f"ClearPass-Policy-Visualiser/{VERSION}",
+            },
+        )
+        response.raise_for_status()
+        release = response.json()
+    except (requests.exceptions.RequestException, ValueError) as exc:
+        logger.warning(
+            "Update check failed: GitHub could not be reached (%s).",
+            type(exc).__name__,
+        )
+        logger.debug("Update check failure.", exc_info=True)
+
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Could not reach GitHub to check for updates.",
+            }
+        )
+
+    latest = str(release.get("tag_name") or "").strip()
+    url = str(release.get("html_url") or "")
+
+    # Only ever link to the project's own GitHub pages.
+    if not url.startswith(
+        "https://github.com/ariyaparsa-dev/clearpass-policy-visualiser/"
+    ):
+        url = ""
+
+    if latest and _version_tuple(latest) > _version_tuple(VERSION):
+        result = {
+            "status": "available",
+            "current": VERSION,
+            "latest": latest.lstrip("vV"),
+            "url": url,
+        }
+        logger.info("Update available: v%s (running v%s).", result["latest"], VERSION)
+    else:
+        result = {"status": "current", "current": VERSION}
+
+    _update_cache["time"] = now
+    _update_cache["result"] = result
+
+    return jsonify(result)
+
 def initialise_cache():
     cp_cache.last_refresh = time.strftime(
         "%d-%m-%Y %H:%M:%S"
@@ -2977,17 +3068,13 @@ def role_impact_analysis(
 init_environment_support(app, initialise_cache)
 
 if __name__ == "__main__":
-    if is_setup_complete(log_missing=True):
-        initialise_cache()
-    else:
-        logger.warning(
-            "Initial setup is incomplete. Starting Flask without "
-            "initialising ClearPass caches."
-        )
+    # Run exactly as server.py does: Waitress, and the protected startup
+    # that keeps CPV running when the initial environment is unreachable.
+    # Registering this module as "app" stops server.py loading it twice.
+    import sys
 
-    app.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=False,
-        # ssl_context=("cert.pem", "key.pem"),
-    )
+    sys.modules.setdefault("app", sys.modules[__name__])
+
+    from server import main
+
+    main()

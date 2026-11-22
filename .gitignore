@@ -17,6 +17,7 @@ venv/
 test_scripts/
 
 # Environment Files
+environments/
 .env
 .env.*
 !.env.example
